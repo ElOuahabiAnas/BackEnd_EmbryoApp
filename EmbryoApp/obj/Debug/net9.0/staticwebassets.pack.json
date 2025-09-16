@@ -1,0 +1,41 @@
+{
+  "Files": [
+    {
+      "Id": "C:\\Users\\Dell\\Downloads\\ProjetDotNet\\EmbryoApp\\EmbryoApp\\wwwroot\\uploads\\media\\f4f231f7-4499-446d-b11c-56c7801a85d9\\01772f07-e69a-4916-b290-f57f5a31ffd2.png",
+      "PackagePath": "staticwebassets\\uploads\\media\\f4f231f7-4499-446d-b11c-56c7801a85d9\\01772f07-e69a-4916-b290-f57f5a31ffd2.png"
+    },
+    {
+      "Id": "C:\\Users\\Dell\\Downloads\\ProjetDotNet\\EmbryoApp\\EmbryoApp\\wwwroot\\uploads\\models\\f4f231f7-4499-446d-b11c-56c7801a85d9\\0f0f4a7c-b7ac-4361-af39-ccb759e9a8a9.glb",
+      "PackagePath": "staticwebassets\\uploads\\models\\f4f231f7-4499-446d-b11c-56c7801a85d9\\0f0f4a7c-b7ac-4361-af39-ccb759e9a8a9.glb"
+    },
+    {
+      "Id": "C:\\Users\\Dell\\Downloads\\ProjetDotNet\\EmbryoApp\\EmbryoApp\\wwwroot\\uploads\\models\\f4f231f7-4499-446d-b11c-56c7801a85d9\\828f408e-3331-4ca2-ad85-d3169668e801.glb",
+      "PackagePath": "staticwebassets\\uploads\\models\\f4f231f7-4499-446d-b11c-56c7801a85d9\\828f408e-3331-4ca2-ad85-d3169668e801.glb"
+    },
+    {
+      "Id": "C:\\Users\\Dell\\Downloads\\ProjetDotNet\\EmbryoApp\\EmbryoApp\\wwwroot\\uploads\\models\\f4f231f7-4499-446d-b11c-56c7801a85d9\\da13339e-45b5-4f18-867a-d89686a42fa9.glb",
+      "PackagePath": "staticwebassets\\uploads\\models\\f4f231f7-4499-446d-b11c-56c7801a85d9\\da13339e-45b5-4f18-867a-d89686a42fa9.glb"
+    },
+    {
+      "Id": "obj\\Debug\\net9.0\\staticwebassets\\msbuild.EmbryoApp.Microsoft.AspNetCore.StaticWebAssetEndpoints.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssetEndpoints.props"
+    },
+    {
+      "Id": "obj\\Debug\\net9.0\\staticwebassets\\msbuild.EmbryoApp.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    },
+    {
+      "Id": "obj\\Debug\\net9.0\\staticwebassets\\msbuild.build.EmbryoApp.props",
+      "PackagePath": "build\\EmbryoApp.props"
+    },
+    {
+      "Id": "obj\\Debug\\net9.0\\staticwebassets\\msbuild.buildMultiTargeting.EmbryoApp.props",
+      "PackagePath": "buildMultiTargeting\\EmbryoApp.props"
+    },
+    {
+      "Id": "obj\\Debug\\net9.0\\staticwebassets\\msbuild.buildTransitive.EmbryoApp.props",
+      "PackagePath": "buildTransitive\\EmbryoApp.props"
+    }
+  ],
+  "ElementsToRemove": []
+}
