@@ -99,4 +99,37 @@ public sealed class AttemptService : IAttemptService
         await _db.SaveChangesAsync(ct);
         return true;
     }
+    
+    public async Task<List<AttemptStatsResponse>> GetUserStatsAsync(string userId, CancellationToken ct)
+    {
+        return await _db.Attempts
+            .AsNoTracking()
+            .Where(a => a.UserId == userId)
+            .GroupBy(a => a.QuizId)
+            .Select(g => new AttemptStatsResponse
+            {
+                QuizId = g.Key,
+                AttemptCount = g.Count(),
+                AverageScore = g.Average(x => x.Score)
+            })
+            .ToListAsync(ct);
+    }
+    
+    public async Task<AttemptGlobalStatsResponse> GetUserGlobalStatsAsync(string userId, CancellationToken ct)
+    {
+        var query = _db.Attempts.AsNoTracking().Where(a => a.UserId == userId);
+
+        var total = await query.CountAsync(ct);
+        var avg = total > 0 ? await query.AverageAsync(a => a.Score, ct) : 0;
+
+        return new AttemptGlobalStatsResponse
+        {
+            TotalAttempts = total,
+            GlobalAverageScore = decimal.Round((decimal)avg, 2)
+        };
+    }
+
+    
+    
+
 }

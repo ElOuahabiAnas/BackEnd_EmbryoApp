@@ -86,6 +86,7 @@ builder.Services.AddScoped<EmbryoApp.Service.Interface.IAttemptService, EmbryoAp
 builder.Services.AddScoped<EmbryoApp.Service.Interface.IAttemptAnswerService, EmbryoApp.Service.Implementation.AttemptAnswerService>();
 builder.Services.AddScoped<EmbryoApp.Service.Interface.INotificationService, EmbryoApp.Service.Implementation.NotificationService>();
 builder.Services.AddScoped<EmbryoApp.Service.Interface.IStatisticsService, EmbryoApp.Service.Implementation.StatisticsService>();
+builder.Services.AddScoped<EmbryoApp.Service.Interface.IEventLogService, EmbryoApp.Service.Implementation.EventLogService>();
 
 
 

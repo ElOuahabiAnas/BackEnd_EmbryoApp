@@ -26,7 +26,8 @@ public class AuthDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<AttemptAnswer> AttemptAnswers => Set<AttemptAnswer>();
 
     public DbSet<Notification> Notifications => Set<Notification>();
-    
+    public DbSet<EventLog> EventLogs => Set<EventLog>();
+
 
 
 
@@ -230,6 +231,26 @@ public class AuthDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => x.IsRead);
             e.HasIndex(x => x.SentAt);
         });
+        
+        b.Entity<EventLog>(e =>
+        {
+            e.ToTable("EventLog");
+            e.HasKey(x => x.EventLogId);
+
+            e.Property(x => x.EventType).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Payload).IsRequired();
+            e.Property(x => x.CreatedAt).HasDefaultValueSql("NOW()");
+
+            // FK optionnelle vers AspNetUsers
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasIndex(x => x.UserId);
+            e.HasIndex(x => x.CreatedAt);
+        });
+
         
         
     }

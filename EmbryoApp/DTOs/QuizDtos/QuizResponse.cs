@@ -3,6 +3,7 @@
 public sealed class QuizResponse
 {
     public Guid QuizId { get; set; }
+    public string Title { get; set; } = default!;
     public string? Description { get; set; }
     public int? TimeLimit { get; set; }
     public int? Attempts { get; set; }

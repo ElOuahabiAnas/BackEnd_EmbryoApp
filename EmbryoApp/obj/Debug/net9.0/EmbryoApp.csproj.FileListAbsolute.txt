@@ -139,3 +139,4 @@ C:\Users\Dell\Downloads\ProjetDotNet\EmbryoApp\EmbryoApp\obj\Debug\net9.0\Embryo
 C:\Users\Dell\Downloads\ProjetDotNet\EmbryoApp\EmbryoApp\obj\Debug\net9.0\EmbryoApp.genruntimeconfig.cache
 C:\Users\Dell\Downloads\ProjetDotNet\EmbryoApp\EmbryoApp\obj\Debug\net9.0\ref\EmbryoApp.dll
 C:\Users\Dell\Downloads\ProjetDotNet\EmbryoApp\EmbryoApp\bin\Debug\net9.0\EmbryoApp.staticwebassets.runtime.json
+C:\Users\Dell\Downloads\ProjetDotNet\EmbryoApp\EmbryoApp\obj\Debug\net9.0\EmbryoApp.sourcelink.json

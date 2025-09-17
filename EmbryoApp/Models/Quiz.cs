@@ -6,6 +6,10 @@ public class Quiz
 {
     [Key]
     public Guid QuizId { get; set; }
+    
+    [MaxLength(255)]
+    [Required]
+    public string Title { get; set; } = default!; 
 
     [MaxLength(2000)]
     public string? Description { get; set; }   // NB: j’ai corrigé "Descriptionn" -> "Description"

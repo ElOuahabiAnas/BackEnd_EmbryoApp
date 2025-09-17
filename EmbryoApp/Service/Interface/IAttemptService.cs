@@ -10,4 +10,7 @@ public interface IAttemptService
     Task<AttemptResponse?> GetByIdAsync(Guid attemptId, CancellationToken ct);
     Task<Guid> CreateAsync(string userId, CreateAttemptRequest req, CancellationToken ct);
     Task<bool> DeleteAsync(Guid attemptId, CancellationToken ct); // réservé prof si tu veux
+    Task<List<AttemptStatsResponse>> GetUserStatsAsync(string userId, CancellationToken ct);
+    Task<AttemptGlobalStatsResponse> GetUserGlobalStatsAsync(string userId, CancellationToken ct);
+
 }

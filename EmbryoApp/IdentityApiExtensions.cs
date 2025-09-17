@@ -9,6 +9,8 @@ public record StudentRegisterRequest(string Email, string Password, string? Firs
 public record AuthForgotPasswordRequest(string Email);
 public record AuthResetPasswordRequest(string Email, string Token, string NewPassword);
 
+public record AuthChangePasswordRequest(string CurrentPassword, string NewPassword);
+
 
 public static class IdentityApiExtensions
 {
@@ -123,6 +125,23 @@ public static class IdentityApiExtensions
             })
             .RequireAuthorization();
 
+        
+        group.MapPost("/change-password", async (
+                ClaimsPrincipal principal,
+                AuthChangePasswordRequest req,
+                UserManager<ApplicationUser> userManager) =>
+            {
+                var user = await userManager.GetUserAsync(principal);
+                if (user is null)
+                    return Results.Unauthorized();
+
+                var result = await userManager.ChangePasswordAsync(user, req.CurrentPassword, req.NewPassword);
+                if (!result.Succeeded)
+                    return Results.BadRequest(new { Errors = result.Errors });
+
+                return Results.Ok(new { Message = "Password changed successfully" });
+            })
+            .RequireAuthorization();
         
 
         return group;

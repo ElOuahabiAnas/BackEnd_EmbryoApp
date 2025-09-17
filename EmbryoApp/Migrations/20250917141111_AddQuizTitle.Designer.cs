@@ -3,6 +3,7 @@ using System;
 using EmbryoApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EmbryoApp.Migrations
 {
     [DbContext(typeof(AuthDbContext))]
-    partial class AuthDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250917141111_AddQuizTitle")]
+    partial class AddQuizTitle
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -154,38 +157,6 @@ namespace EmbryoApp.Migrations
                     b.HasIndex("QuestionId");
 
                     b.ToTable("AttemptAnswer", (string)null);
-                });
-
-            modelBuilder.Entity("EmbryoApp.Models.EventLog", b =>
-                {
-                    b.Property<Guid>("EventLogId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<string>("EventType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("Payload")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("UserId")
-                        .HasColumnType("text");
-
-                    b.HasKey("EventLogId");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("EventLog", (string)null);
                 });
 
             modelBuilder.Entity("EmbryoApp.Models.Model3D", b =>
@@ -615,16 +586,6 @@ namespace EmbryoApp.Migrations
                     b.Navigation("Attempt");
 
                     b.Navigation("Question");
-                });
-
-            modelBuilder.Entity("EmbryoApp.Models.EventLog", b =>
-                {
-                    b.HasOne("EmbryoApp.Models.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("EmbryoApp.Models.Model3D", b =>

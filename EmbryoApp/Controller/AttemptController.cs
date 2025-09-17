@@ -99,4 +99,32 @@ public sealed class AttemptController : ControllerBase
         var ok = await _svc.DeleteAsync(attemptId, ct);
         return ok ? NoContent() : NotFound(new { error = "attempt_not_found", attemptId });
     }
+    
+    // GET stats for connected user
+    [HttpGet("my-stats")]
+    [Authorize(Roles = "Student,Professor")] // les deux peuvent consulter leurs propres stats
+    [ProducesResponseType(typeof(List<AttemptStatsResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<AttemptStatsResponse>>> GetMyStats(CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var stats = await _svc.GetUserStatsAsync(userId, ct);
+        return Ok(stats);
+    }
+    
+    // GET global stats for connected user
+    [HttpGet("my-global-stats")]
+    [Authorize(Roles = "Student,Professor")]
+    [ProducesResponseType(typeof(AttemptGlobalStatsResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<AttemptGlobalStatsResponse>> GetMyGlobalStats(CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var stats = await _svc.GetUserGlobalStatsAsync(userId, ct);
+        return Ok(stats);
+    }
+
+
 }

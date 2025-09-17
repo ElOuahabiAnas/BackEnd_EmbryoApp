@@ -33,6 +33,7 @@ public sealed class QuizService : IQuizService
             .Take(size)
             .Select(x => new QuizResponse {
                 QuizId = x.QuizId,
+                Title = x.Title,
                 Description = x.Description,
                 TimeLimit = x.TimeLimit,
                 Attempts = x.Attempts,
@@ -51,6 +52,7 @@ public sealed class QuizService : IQuizService
             .Where(x => x.QuizId == quizId)
             .Select(x => new QuizResponse {
                 QuizId = x.QuizId,
+                Title = x.Title,
                 Description = x.Description,
                 TimeLimit = x.TimeLimit,
                 Attempts = x.Attempts,
@@ -73,6 +75,7 @@ public sealed class QuizService : IQuizService
         var entity = new Quiz
         {
             QuizId = Guid.NewGuid(),
+            Title = req.Title.Trim(),
             Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim(),
             TimeLimit = req.TimeLimit,
             Attempts = req.Attempts,
@@ -90,7 +93,8 @@ public sealed class QuizService : IQuizService
     {
         var qz = await _db.Set<Quiz>().FirstOrDefaultAsync(x => x.QuizId == quizId, ct);
         if (qz is null) return null;
-
+        if (!string.IsNullOrWhiteSpace(req.Title))
+            qz.Title = req.Title.Trim();
         if (req.Description != null) qz.Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim();
         if (req.TimeLimit.HasValue)  qz.TimeLimit   = req.TimeLimit;
         if (req.Attempts.HasValue)   qz.Attempts    = req.Attempts;
@@ -124,6 +128,7 @@ public sealed class QuizService : IQuizService
 
         return new QuizResponse {
             QuizId = qz.QuizId,
+            Title = qz.Title,
             Description = qz.Description,
             TimeLimit = qz.TimeLimit,
             Attempts = qz.Attempts,
