@@ -41,7 +41,7 @@ public sealed class ModelFilesController : ControllerBase
     // e.g. POST /api/models/{modelId}/files  (ModelId dans body doit matcher la route — on le force)
     [HttpPost("api/models/{modelId:guid}/files")]
     [Authorize(Roles = "Student,Professor")]
-[RequestSizeLimit(200_000_000)] // 200 MB si besoin
+    [DisableRequestSizeLimit]
 [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
 [ProducesResponseType(StatusCodes.Status400BadRequest)]
 public async Task<ActionResult> Upload(
