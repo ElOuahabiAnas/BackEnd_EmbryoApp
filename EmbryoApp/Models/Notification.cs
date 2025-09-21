@@ -19,7 +19,6 @@ public class Notification
 
     public bool IsRead { get; set; } = false;
 
-    [Required]
-    public string UserId { get; set; } = default!;           // FK -> AspNetUsers(Id)
+    public string? UserId { get; set; }         // FK -> AspNetUsers(Id)
     public ApplicationUser? User { get; set; }                // navigation
 }

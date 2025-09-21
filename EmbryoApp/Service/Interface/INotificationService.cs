@@ -8,7 +8,7 @@ namespace EmbryoApp.Service.Interface;
 
 public interface INotificationService
 {
-    Task<PagedResult<NotificationResponse>> ListAsync(NotificationListQuery q, CancellationToken ct);
+    Task<PagedResult<NotificationResponse>> ListAsync(NotificationListQuery q, bool isProfessor, CancellationToken ct);
     Task<NotificationResponse?> GetByIdAsync(Guid id, CancellationToken ct);
 
     // création (ex: depuis un backoffice ou une action métier)

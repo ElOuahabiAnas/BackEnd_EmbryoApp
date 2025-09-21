@@ -12,6 +12,10 @@ public record AuthResetPasswordRequest(string Email, string Token, string NewPas
 public record AuthChangePasswordRequest(string CurrentPassword, string NewPassword);
 
 
+
+
+
+
 public static class IdentityApiExtensions
 {
     public static RouteGroupBuilder MapCustomAuth(this IEndpointRouteBuilder endpoints)

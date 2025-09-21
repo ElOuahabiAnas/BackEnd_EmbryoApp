@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "UG7RRW2SToM/AJKFKVdDBEtLddvWm0wPT3b0j4Dan8E=",
+  "Hash": "ygC/9RcCPRwK4MwqP5sYBaHw8EozQLJihH/DWI2qqXI=",
   "Source": "EmbryoApp",
   "BasePath": "_content/EmbryoApp",
   "Mode": "Default",
@@ -36,6 +36,27 @@
       "CopyToOutputDirectory": "Never",
       "CopyToPublishDirectory": "PreserveNewest",
       "OriginalItemSpec": "wwwroot\\uploads\\media\\f4f231f7-4499-446d-b11c-56c7801a85d9\\01772f07-e69a-4916-b290-f57f5a31ffd2.png"
+    },
+    {
+      "Identity": "C:\\Users\\Dell\\Downloads\\ProjetDotNet\\EmbryoApp\\EmbryoApp\\wwwroot\\uploads\\models\\8535ebf6-ba0d-4c85-bb86-78c4ddcd4e5e\\dcf5e068-839e-4cfa-97c1-c57db87bad11.glb",
+      "SourceId": "EmbryoApp",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\Users\\Dell\\Downloads\\ProjetDotNet\\EmbryoApp\\EmbryoApp\\wwwroot\\",
+      "BasePath": "_content/EmbryoApp",
+      "RelativePath": "uploads/models/8535ebf6-ba0d-4c85-bb86-78c4ddcd4e5e/dcf5e068-839e-4cfa-97c1-c57db87bad11#[.{fingerprint}]?.glb",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "Fingerprint": "wos8tfq6u1",
+      "Integrity": "QDwcq8qTRbh8IXOCr2dswERYwvNX8xZA/PfIpCwGjMA=",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\uploads\\models\\8535ebf6-ba0d-4c85-bb86-78c4ddcd4e5e\\dcf5e068-839e-4cfa-97c1-c57db87bad11.glb"
     },
     {
       "Identity": "C:\\Users\\Dell\\Downloads\\ProjetDotNet\\EmbryoApp\\EmbryoApp\\wwwroot\\uploads\\models\\f4f231f7-4499-446d-b11c-56c7801a85d9\\0f0f4a7c-b7ac-4361-af39-ccb759e9a8a9.glb",
@@ -181,6 +202,88 @@
         {
           "Name": "integrity",
           "Value": "sha256-gA3l1u2MsGaoC0FnAjaY4cg5VzE+faLNv3wh+1ntshg="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/models/8535ebf6-ba0d-4c85-bb86-78c4ddcd4e5e/dcf5e068-839e-4cfa-97c1-c57db87bad11.glb",
+      "AssetFile": "C:\\Users\\Dell\\Downloads\\ProjetDotNet\\EmbryoApp\\EmbryoApp\\wwwroot\\uploads\\models\\8535ebf6-ba0d-4c85-bb86-78c4ddcd4e5e\\dcf5e068-839e-4cfa-97c1-c57db87bad11.glb",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "288106020"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "application/octet-stream"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"QDwcq8qTRbh8IXOCr2dswERYwvNX8xZA/PfIpCwGjMA=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Thu, 18 Sep 2025 12:21:13 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "no-cache"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "integrity",
+          "Value": "sha256-QDwcq8qTRbh8IXOCr2dswERYwvNX8xZA/PfIpCwGjMA="
+        }
+      ]
+    },
+    {
+      "Route": "uploads/models/8535ebf6-ba0d-4c85-bb86-78c4ddcd4e5e/dcf5e068-839e-4cfa-97c1-c57db87bad11.wos8tfq6u1.glb",
+      "AssetFile": "C:\\Users\\Dell\\Downloads\\ProjetDotNet\\EmbryoApp\\EmbryoApp\\wwwroot\\uploads\\models\\8535ebf6-ba0d-4c85-bb86-78c4ddcd4e5e\\dcf5e068-839e-4cfa-97c1-c57db87bad11.glb",
+      "Selectors": [],
+      "ResponseHeaders": [
+        {
+          "Name": "Accept-Ranges",
+          "Value": "bytes"
+        },
+        {
+          "Name": "Content-Length",
+          "Value": "288106020"
+        },
+        {
+          "Name": "Content-Type",
+          "Value": "application/octet-stream"
+        },
+        {
+          "Name": "ETag",
+          "Value": "\"QDwcq8qTRbh8IXOCr2dswERYwvNX8xZA/PfIpCwGjMA=\""
+        },
+        {
+          "Name": "Last-Modified",
+          "Value": "Thu, 18 Sep 2025 12:21:13 GMT"
+        },
+        {
+          "Name": "Cache-Control",
+          "Value": "max-age=31536000, immutable"
+        }
+      ],
+      "EndpointProperties": [
+        {
+          "Name": "fingerprint",
+          "Value": "wos8tfq6u1"
+        },
+        {
+          "Name": "label",
+          "Value": "uploads/models/8535ebf6-ba0d-4c85-bb86-78c4ddcd4e5e/dcf5e068-839e-4cfa-97c1-c57db87bad11.glb"
+        },
+        {
+          "Name": "integrity",
+          "Value": "sha256-QDwcq8qTRbh8IXOCr2dswERYwvNX8xZA/PfIpCwGjMA="
         }
       ]
     },

@@ -22,7 +22,6 @@ public sealed class NotificationController : ControllerBase
     // - Professor: peut lister pour n'importe quel UserId (via query)
     [HttpGet]
     [Authorize]
-    [ProducesResponseType(typeof(PagedResult<NotificationResponse>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PagedResult<NotificationResponse>>> List(
         [FromQuery] NotificationListQuery q, CancellationToken ct)
     {
@@ -30,9 +29,10 @@ public sealed class NotificationController : ControllerBase
         if (!isProfessor)
         {
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-            q.UserId = currentUserId; // force
+            q.UserId = currentUserId; // force userId pour l'étudiant
         }
-        return Ok(await _svc.ListAsync(q, ct));
+
+        return Ok(await _svc.ListAsync(q, isProfessor, ct));
     }
 
     // GET by id (ownership)
@@ -51,6 +51,38 @@ public sealed class NotificationController : ControllerBase
         if (!isProfessor && item.UserId != currentUserId) return Forbid();
 
         return Ok(item);
+    }
+    
+    // CREATE GLOBAL (Professor only)
+    [HttpPost("global")]
+    [Authorize(Roles = "Student,Professor")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> CreateGlobal([FromBody] CreateNotificationRequest req, CancellationToken ct)
+    {
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+        // Force UserId à null => notif globale
+        req.UserId = null;
+
+        var id = await _svc.CreateAsync(req, ct);
+        return CreatedAtAction(nameof(Get), new { id }, new { id });
+    }
+    
+    // GET notifications of the connected user
+    [HttpGet("me")]
+    [Authorize]
+    [ProducesResponseType(typeof(PagedResult<NotificationResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResult<NotificationResponse>>> ListMine(
+        [FromQuery] NotificationListQuery q, CancellationToken ct)
+    {
+        var isProfessor = User.IsInRole("Professor");
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+
+        // Forcer le UserId sur l'utilisateur courant
+        q.UserId = currentUserId;
+
+        return Ok(await _svc.ListAsync(q, isProfessor, ct));
     }
 
     // CREATE (Professor)
@@ -72,7 +104,7 @@ public sealed class NotificationController : ControllerBase
         }
     }
 
-    // MARK AS READ (own or elevated)
+    // MARK AS READ (only for the connected user)
     [HttpPost("{id:guid}/read")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -81,17 +113,16 @@ public sealed class NotificationController : ControllerBase
     public async Task<IActionResult> MarkRead(Guid id, CancellationToken ct)
     {
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        var isProfessor = User.IsInRole("Professor");
 
-        var ok = await _svc.MarkReadAsync(id, currentUserId!, isProfessor, ct);
+        var ok = await _svc.MarkReadAsync(id, currentUserId!, false, ct); // 🚀 false = pas de bypass prof
         if (!ok)
         {
-            // soit not found, soit forbid -> on ne sait pas sans requête en plus
             var item = await _svc.GetByIdAsync(id, ct);
             return item is null ? NotFound(new { error = "notification_not_found", id }) : Forbid();
         }
         return NoContent();
     }
+
 
     // MARK ALL AS READ for a user
     [HttpPost("read-all")]
@@ -118,4 +149,12 @@ public sealed class NotificationController : ControllerBase
         var ok = await _svc.DeleteAsync(id, ct);
         return ok ? NoContent() : NotFound(new { error = "notification_not_found", id });
     }
+    
+    
+
+
 }
+
+
+
+

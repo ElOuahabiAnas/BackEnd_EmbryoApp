@@ -12,5 +12,6 @@ public interface IAttemptService
     Task<bool> DeleteAsync(Guid attemptId, CancellationToken ct); // réservé prof si tu veux
     Task<List<AttemptStatsResponse>> GetUserStatsAsync(string userId, CancellationToken ct);
     Task<AttemptGlobalStatsResponse> GetUserGlobalStatsAsync(string userId, CancellationToken ct);
+    Task<List<QuizAttemptStudentResponse>> GetStudentsByQuizAsync(Guid quizId, CancellationToken ct);
 
 }

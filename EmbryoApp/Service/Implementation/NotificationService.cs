@@ -14,7 +14,7 @@ public sealed class NotificationService : INotificationService
     private readonly AuthDbContext _db;
     public NotificationService(AuthDbContext db) => _db = db;
 
-    public async Task<PagedResult<NotificationResponse>> ListAsync(NotificationListQuery q, CancellationToken ct)
+    public async Task<PagedResult<NotificationResponse>> ListAsync(NotificationListQuery q, bool isProfessor, CancellationToken ct)
     {
         var page = Math.Max(1, q.Page);
         var size = Math.Clamp(q.PageSize, 1, 100);
@@ -22,7 +22,18 @@ public sealed class NotificationService : INotificationService
         var baseQuery = _db.Set<Notification>().AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(q.UserId))
-            baseQuery = baseQuery.Where(n => n.UserId == q.UserId);
+        {
+            if (isProfessor)
+            {
+                // Professeur → uniquement ses notifs perso
+                baseQuery = baseQuery.Where(n => n.UserId == q.UserId);
+            }
+            else
+            {
+                // Étudiant → notifs perso + globales
+                baseQuery = baseQuery.Where(n => n.UserId == q.UserId || n.UserId == null);
+            }
+        }
 
         if (q.UnreadOnly == true)
             baseQuery = baseQuery.Where(n => !n.IsRead);
@@ -48,6 +59,8 @@ public sealed class NotificationService : INotificationService
         return new PagedResult<NotificationResponse> { Total = total, Items = items };
     }
 
+
+
     public async Task<NotificationResponse?> GetByIdAsync(Guid id, CancellationToken ct)
     {
         return await _db.Set<Notification>().AsNoTracking()
@@ -66,9 +79,12 @@ public sealed class NotificationService : INotificationService
 
     public async Task<Guid> CreateAsync(CreateNotificationRequest req, CancellationToken ct)
     {
-        // vérifier que l'utilisateur existe
-        var exists = await _db.Users.AsNoTracking().AnyAsync(u => u.Id == req.UserId, ct);
-        if (!exists) throw new KeyNotFoundException("user_not_found");
+        if (!string.IsNullOrWhiteSpace(req.UserId))
+        {
+            var exists = await _db.Users.AsNoTracking().AnyAsync(u => u.Id == req.UserId, ct);
+            if (!exists) throw new KeyNotFoundException("user_not_found");
+        }
+
 
         var entity = new Notification
         {
@@ -77,8 +93,9 @@ public sealed class NotificationService : INotificationService
             Body  = req.Body.Trim(),
             SentAt = DateTimeOffset.UtcNow,
             IsRead = false,
-            UserId = req.UserId
+            UserId = string.IsNullOrWhiteSpace(req.UserId) ? null : req.UserId
         };
+
 
         _db.Add(entity);
         await _db.SaveChangesAsync(ct);

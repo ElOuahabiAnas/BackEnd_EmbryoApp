@@ -110,7 +110,9 @@ public sealed class AttemptService : IAttemptService
             {
                 QuizId = g.Key,
                 AttemptCount = g.Count(),
-                AverageScore = g.Average(x => x.Score)
+                AverageScore = g.Average(x => x.Score),
+                LastScore = g.OrderByDescending(x => x.AttemptedAt).First().Score,
+                LastAttemptedAt = g.OrderByDescending(x => x.AttemptedAt).First().AttemptedAt
             })
             .ToListAsync(ct);
     }
@@ -128,6 +130,26 @@ public sealed class AttemptService : IAttemptService
             GlobalAverageScore = decimal.Round((decimal)avg, 2)
         };
     }
+    
+    
+    public async Task<List<QuizAttemptStudentResponse>> GetStudentsByQuizAsync(Guid quizId, CancellationToken ct)
+    {
+        return await _db.Attempts
+            .AsNoTracking()
+            .Where(a => a.QuizId == quizId)
+            .GroupBy(a => a.UserId)
+            .Select(g => new QuizAttemptStudentResponse
+            {
+                UserId = g.Key,
+                FirstName = g.Select(x => x.User!.FirstName).FirstOrDefault() ?? "",
+                LastName  = g.Select(x => x.User!.LastName).FirstOrDefault() ?? "",
+                Email     = g.Select(x => x.User!.Email).FirstOrDefault() ?? "",
+                LastScore = g.OrderByDescending(x => x.AttemptedAt).First().Score,
+                LastAttemptedAt = g.OrderByDescending(x => x.AttemptedAt).First().AttemptedAt
+            })
+            .ToListAsync(ct);
+    }
+
 
     
     

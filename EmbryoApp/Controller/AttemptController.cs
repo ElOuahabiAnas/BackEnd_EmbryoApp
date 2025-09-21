@@ -126,5 +126,16 @@ public sealed class AttemptController : ControllerBase
         return Ok(stats);
     }
 
+    
+    // GET list of students with last score for a quiz
+    [HttpGet("quiz/{quizId:guid}/students")]
+    [Authorize(Roles = "Professor")] // réservé aux profs
+    [ProducesResponseType(typeof(List<QuizAttemptStudentResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<QuizAttemptStudentResponse>>> GetStudentsByQuiz(Guid quizId, CancellationToken ct)
+    {
+        var result = await _svc.GetStudentsByQuizAsync(quizId, ct);
+        return Ok(result);
+    }
+
 
 }

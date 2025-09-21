@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.AspNetCore.Http.Features; 
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -89,6 +90,11 @@ builder.Services.AddScoped<EmbryoApp.Service.Interface.IStatisticsService, Embry
 builder.Services.AddScoped<EmbryoApp.Service.Interface.IEventLogService, EmbryoApp.Service.Implementation.EventLogService>();
 
 
+//  Lever la limite par défaut 128 MB pour les formulaires multipart
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = long.MaxValue; // illimité
+});
 
 var app = builder.Build();
 
