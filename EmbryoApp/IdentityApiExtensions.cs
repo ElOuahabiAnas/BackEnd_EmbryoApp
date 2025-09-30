@@ -1,11 +1,22 @@
 ﻿using System.Security.Claims;
 using System.Text;
 using EmbryoApp.Models;
+using EmbryoApp.Service.Interface;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 
-public record StudentRegisterRequest(string Email, string Password, string? FirstName, string? LastName);
+public record StudentRegisterRequest(
+    string Email,
+    string Password,
+    string? FirstName,
+    string? LastName,
+    string? CodeApogee,
+    string? CNE,
+    string? Group
+);
+
+
 public record AuthForgotPasswordRequest(string Email);
 public record AuthResetPasswordRequest(string Email, string Token, string NewPassword);
 
@@ -36,8 +47,12 @@ public static class IdentityApiExtensions
                 Email = req.Email,
                 FirstName = req.FirstName,
                 LastName  = req.LastName,
-                IsActive  = true // sécurité : on force explicitement
+                CodeApogee = req.CodeApogee,
+                CNE = req.CNE,
+                Group = req.Group,
+                IsActive  = true
             };
+
 
             var create = await userManager.CreateAsync(user, req.Password);
             if (!create.Succeeded)
@@ -60,25 +75,36 @@ public static class IdentityApiExtensions
                 user.Email,
                 user.FirstName,
                 user.LastName,
+                user.CodeApogee,
+                user.CNE,
+                user.Group,
                 user.IsActive
             });
+
         });
         
         
         // ✅ /auth/forgot-password → génère un token encodé
         group.MapPost("/forgot-password", async (
             AuthForgotPasswordRequest req,
-            UserManager<ApplicationUser> userManager) =>
+            UserManager<ApplicationUser> userManager,
+            IEmailSender emailSender,
+            IConfiguration config) =>
         {
             var user = await userManager.FindByEmailAsync(req.Email);
             if (user is null)
-                return Results.Ok(new { Message = "If account exists, token generated." });
+                return Results.Ok(new { Message = "If account exists, email sent." });
 
             var rawToken = await userManager.GeneratePasswordResetTokenAsync(user);
             var encoded = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(rawToken));
 
-            // en prod : envoyer par email
-            return Results.Ok(new { Email = req.Email, ResetToken = encoded });
+            var frontendUrl = config["FrontendUrl"] ?? "http://localhost:3000";
+            var resetLink = $"{frontendUrl}/security/reset-password?email={user.Email}&token={encoded}";
+
+            await emailSender.SendAsync(user.Email!, "Password Reset", 
+                $"Cliquez sur ce lien pour réinitialiser votre mot de passe : <a href=\"{resetLink}\">{resetLink}</a>");
+
+            return Results.Ok(new { Message = "If account exists, email sent." });
         });
 
         // ✅ /auth/reset-password → applique le token
@@ -124,10 +150,14 @@ public static class IdentityApiExtensions
                     firstName = user.FirstName,
                     lastName  = user.LastName,
                     isActive  = user.IsActive,
+                    codeApogee = user.CodeApogee,
+                    cne = user.CNE,
+                    group = user.Group,
                     roles
                 });
             })
             .RequireAuthorization();
+
 
         
         group.MapPost("/change-password", async (
@@ -146,6 +176,7 @@ public static class IdentityApiExtensions
                 return Results.Ok(new { Message = "Password changed successfully" });
             })
             .RequireAuthorization();
+        
         
 
         return group;

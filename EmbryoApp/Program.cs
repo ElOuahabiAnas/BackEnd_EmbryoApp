@@ -1,6 +1,7 @@
 using EmbryoApp.Data;
 using EmbryoApp.Models;
 using EmbryoApp.Seed;
+using EmbryoApp.Service.Implementation;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -88,6 +89,8 @@ builder.Services.AddScoped<EmbryoApp.Service.Interface.IAttemptAnswerService, Em
 builder.Services.AddScoped<EmbryoApp.Service.Interface.INotificationService, EmbryoApp.Service.Implementation.NotificationService>();
 builder.Services.AddScoped<EmbryoApp.Service.Interface.IStatisticsService, EmbryoApp.Service.Implementation.StatisticsService>();
 builder.Services.AddScoped<EmbryoApp.Service.Interface.IEventLogService, EmbryoApp.Service.Implementation.EventLogService>();
+builder.Services.AddScoped<EmbryoApp.Service.Interface.IEmailSender, EmbryoApp.Service.Implementation.SmtpEmailSender>();
+builder.Services.AddScoped<EmbryoApp.Service.Interface.IGroupAccessRuleService, EmbryoApp.Service.Implementation.GroupAccessRuleService>();
 
 
 //  Lever la limite par défaut 128 MB pour les formulaires multipart

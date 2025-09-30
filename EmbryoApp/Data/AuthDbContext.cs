@@ -250,6 +250,35 @@ public class AuthDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => x.UserId);
             e.HasIndex(x => x.CreatedAt);
         });
+        
+        
+        b.Entity<ApplicationUser>(e =>
+        {
+            e.Property(x => x.FirstName).HasMaxLength(100);
+            e.Property(x => x.LastName).HasMaxLength(100);
+
+            // 🚀 nouveaux champs
+            e.Property(x => x.CodeApogee).HasMaxLength(50).IsRequired(false);
+            e.Property(x => x.CNE).HasMaxLength(50).IsRequired(false);
+            e.Property(x => x.Group).HasMaxLength(50).IsRequired(false);
+        });
+        
+        b.Entity<GroupAccessRule>(e =>
+        {
+            e.ToTable("GroupAccessRule");
+            e.HasKey(x => x.RuleId);
+
+            e.Property(x => x.GroupName).HasMaxLength(100).IsRequired();
+            e.Property(x => x.WeekDays).HasConversion<int>().IsRequired();
+            e.Property(x => x.IsAllowed).HasDefaultValue(true).IsRequired();
+            e.Property(x => x.CreatedAt).HasDefaultValueSql("NOW()");
+            e.Property(x => x.UpdatedAt);
+
+            e.HasIndex(x => x.GroupName);
+            e.HasIndex(x => x.IsAllowed);
+        });
+
+
 
         
         

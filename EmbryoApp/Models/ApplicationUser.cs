@@ -8,5 +8,10 @@ namespace EmbryoApp.Models
         public string? FirstName { get; set; }
         public string? LastName  { get; set; }
         public bool IsActive { get; set; } = true; // valeur par défaut côté CLR
+        
+        public string? CodeApogee { get; set; }
+        public string? CNE { get; set; }
+        public string? Group { get; set; }
+   
     }
 }

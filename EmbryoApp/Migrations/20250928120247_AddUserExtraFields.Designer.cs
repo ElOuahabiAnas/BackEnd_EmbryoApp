@@ -3,6 +3,7 @@ using System;
 using EmbryoApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EmbryoApp.Migrations
 {
     [DbContext(typeof(AuthDbContext))]
-    partial class AuthDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250928120247_AddUserExtraFields")]
+    partial class AddUserExtraFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -200,42 +203,6 @@ namespace EmbryoApp.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("EventLog", (string)null);
-                });
-
-            modelBuilder.Entity("EmbryoApp.Models.GroupAccessRule", b =>
-                {
-                    b.Property<Guid>("RuleId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<string>("GroupName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<bool>("IsAllowed")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
-
-                    b.Property<DateTimeOffset?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("WeekDays")
-                        .HasColumnType("integer");
-
-                    b.HasKey("RuleId");
-
-                    b.HasIndex("GroupName");
-
-                    b.HasIndex("IsAllowed");
-
-                    b.ToTable("GroupAccessRule", (string)null);
                 });
 
             modelBuilder.Entity("EmbryoApp.Models.Model3D", b =>
