@@ -28,6 +28,9 @@ public class AuthDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<EventLog> EventLogs => Set<EventLog>();
 
+    public DbSet<ModelRating> ModelRatings => Set<ModelRating>();
+
+    public DbSet<ModelComment> ModelComments => Set<ModelComment>();
 
 
 
@@ -277,6 +280,55 @@ public class AuthDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(x => x.GroupName);
             e.HasIndex(x => x.IsAllowed);
         });
+        
+        b.Entity<ModelRating>(e =>
+        {
+            e.ToTable("ModelRating");
+            e.HasKey(x => x.ModelRatingId);
+
+            e.Property(x => x.Rating).IsRequired();
+            e.Property(x => x.CreatedAt).HasDefaultValueSql("NOW()");
+
+            e.HasOne(x => x.Model)
+                .WithMany()               // ou .WithMany(m => m.Ratings) si tu ajoutes une collection côté Model3D
+                .HasForeignKey(x => x.ModelId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Un utilisateur ne peut noter un modèle qu'une seule fois
+            e.HasIndex(x => new { x.ModelId, x.UserId }).IsUnique();
+
+            e.HasIndex(x => x.ModelId);
+        });
+
+        
+        b.Entity<ModelComment>(e =>
+        {
+            e.ToTable("ModelComment");
+            e.HasKey(x => x.ModelCommentId);
+
+            e.Property(x => x.Content).HasMaxLength(1000).IsRequired();
+            e.Property(x => x.CreatedAt).HasDefaultValueSql("NOW()");
+
+            e.HasOne(x => x.Model)
+                .WithMany() // ou .WithMany(m => m.Comments) si tu ajoutes une collection sur Model3D
+                .HasForeignKey(x => x.ModelId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => x.ModelId);
+            e.HasIndex(x => x.UserId);
+            e.HasIndex(x => new { x.ModelId, x.CreatedAt }); // pour tri récent
+        });
+
 
 
 

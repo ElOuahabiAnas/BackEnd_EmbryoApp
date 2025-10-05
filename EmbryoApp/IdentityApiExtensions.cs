@@ -5,6 +5,13 @@ using EmbryoApp.Service.Interface;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
+using ClosedXML.Excel;
+using System.Security.Cryptography;
+using EmbryoApp.DTOs.AuthDtos;
+using EmbryoApp.Utils;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
 
 public record StudentRegisterRequest(
     string Email,
@@ -178,6 +185,102 @@ public static class IdentityApiExtensions
             .RequireAuthorization();
         
         
+        
+group.MapPost("/import-students", async (
+    [FromForm] ImportStudentsRequest req,
+    UserManager<ApplicationUser> userManager,
+    RoleManager<IdentityRole> roleManager,
+    IEmailSender emailSender,
+    ILoggerFactory loggerFactory) =>
+{
+    var log = loggerFactory.CreateLogger("ImportStudents");
+
+    var file = req.File;
+    if (file is null) return Results.BadRequest(new { Error = "No file uploaded" });
+
+    var groupName = Path.GetFileNameWithoutExtension(file.FileName);
+
+    using var stream = file.OpenReadStream();
+    using var workbook = new XLWorkbook(stream);
+    var worksheet = workbook.Worksheets.First();
+
+    // ✅ Vérifier le rôle une seule fois
+    if (!await roleManager.RoleExistsAsync("Student"))
+        return Results.StatusCode(500);
+
+    var usersCreated = new List<object>();
+    var emailsToSend = new List<(string Email, string FirstName, string Password)>();
+
+    foreach (var row in worksheet.RowsUsed().Skip(1))
+    {
+        var email = row.Cell(1).GetString().Trim();
+        var codeApogee = row.Cell(2).GetString().Trim();
+        var cne = row.Cell(3).GetString().Trim();
+        var firstName = row.Cell(4).GetString().Trim();
+        var lastName = row.Cell(5).GetString().Trim();
+
+        if (string.IsNullOrWhiteSpace(email)) continue;
+
+        var password = PasswordHelper.GenerateSecurePassword();
+
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            FirstName = firstName,
+            LastName = lastName,
+            CodeApogee = codeApogee,
+            CNE = cne,
+            Group = groupName,
+            IsActive = true
+        };
+
+        var create = await userManager.CreateAsync(user, password);
+        if (!create.Succeeded)
+        {
+            log.LogWarning("Create user failed: {Email} {Errors}",
+                email,
+                string.Join(" | ", create.Errors.Select(e => e.Description)));
+            continue;
+        }
+
+        await userManager.AddToRoleAsync(user, "Student");
+
+        // ✅ Stocke pour envoyer plus tard
+        emailsToSend.Add((user.Email!, firstName, password));
+
+        usersCreated.Add(new {
+            user.Id,
+            user.Email,
+            user.FirstName,
+            user.LastName,
+            user.CodeApogee,
+            user.CNE,
+            user.Group
+        });
+    }
+
+    // ✅ Envoi des emails après création de tous les utilisateurs
+    foreach (var entry in emailsToSend)
+    {
+        try
+        {
+            await emailSender.SendAsync(entry.Email, "Accès à la plateforme",
+                $"Bonjour {entry.FirstName},<br/>" +
+                $"Votre compte a été créé dans le groupe <b>{groupName}</b>.<br/>" +
+                $"Votre mot de passe est : <b>{entry.Password}</b><br/><br/>" +
+                $"Merci de le changer après connexion.");
+        }
+        catch (Exception ex)
+        {
+            log.LogError(ex, "Erreur envoi email à {Email}", entry.Email);
+        }
+    }
+
+    return Results.Ok(new { Message = "Import terminé", Group = groupName, Users = usersCreated });
+}).DisableAntiforgery();
+
+
 
         return group;
     }

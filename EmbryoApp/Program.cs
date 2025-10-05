@@ -91,6 +91,10 @@ builder.Services.AddScoped<EmbryoApp.Service.Interface.IStatisticsService, Embry
 builder.Services.AddScoped<EmbryoApp.Service.Interface.IEventLogService, EmbryoApp.Service.Implementation.EventLogService>();
 builder.Services.AddScoped<EmbryoApp.Service.Interface.IEmailSender, EmbryoApp.Service.Implementation.SmtpEmailSender>();
 builder.Services.AddScoped<EmbryoApp.Service.Interface.IGroupAccessRuleService, EmbryoApp.Service.Implementation.GroupAccessRuleService>();
+builder.Services.AddScoped<EmbryoApp.Service.Interface.IModelRatingService, EmbryoApp.Service.Implementation.ModelRatingService>();
+builder.Services.AddScoped<EmbryoApp.Service.Interface.IModelCommentService, EmbryoApp.Service.Implementation.ModelCommentService>();
+
+
 
 
 //  Lever la limite par défaut 128 MB pour les formulaires multipart

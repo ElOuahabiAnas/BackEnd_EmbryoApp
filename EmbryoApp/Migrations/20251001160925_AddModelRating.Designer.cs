@@ -3,6 +3,7 @@ using System;
 using EmbryoApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EmbryoApp.Migrations
 {
     [DbContext(typeof(AuthDbContext))]
-    partial class AuthDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251001160925_AddModelRating")]
+    partial class AddModelRating
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -279,40 +282,6 @@ namespace EmbryoApp.Migrations
                         {
                             t.HasCheckConstraint("CK_Model3D_Status", "\"Status\" IN ('Draft','Active','Closed')");
                         });
-                });
-
-            modelBuilder.Entity("EmbryoApp.Models.ModelComment", b =>
-                {
-                    b.Property<Guid>("ModelCommentId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<Guid>("ModelId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("ModelCommentId");
-
-                    b.HasIndex("ModelId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("ModelId", "CreatedAt");
-
-                    b.ToTable("ModelComment", (string)null);
                 });
 
             modelBuilder.Entity("EmbryoApp.Models.ModelFile", b =>
@@ -755,25 +724,6 @@ namespace EmbryoApp.Migrations
                         .IsRequired();
 
                     b.Navigation("Author");
-                });
-
-            modelBuilder.Entity("EmbryoApp.Models.ModelComment", b =>
-                {
-                    b.HasOne("EmbryoApp.Models.Model3D", "Model")
-                        .WithMany()
-                        .HasForeignKey("ModelId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("EmbryoApp.Models.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Model");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("EmbryoApp.Models.ModelFile", b =>
