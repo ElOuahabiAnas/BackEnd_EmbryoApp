@@ -280,6 +280,184 @@ group.MapPost("/import-students", async (
     return Results.Ok(new { Message = "Import terminé", Group = groupName, Users = usersCreated });
 }).DisableAntiforgery();
 
+group.MapGet("/groups/with-counts", async (UserManager<ApplicationUser> userManager) =>
+    {
+        var data = await userManager.Users
+            .Where(u => !string.IsNullOrWhiteSpace(u.Group))
+            .GroupBy(u => u.Group!)
+            .Select(g => new { Group = g.Key, Count = g.Count() })
+            .OrderBy(x => x.Group)
+            .ToListAsync();
+
+        return Results.Ok(data);
+    })
+    .RequireAuthorization();
+
+// GET /auth/groups/{group}/students?Page=1&PageSize=50&q=search
+group.MapGet("/groups/{group}/students", async (
+    string group,
+    [FromQuery] int? page,
+    [FromQuery] int? pageSize,
+    [FromQuery] string? q,
+    UserManager<ApplicationUser> userManager) =>
+{
+    // valeurs par défaut si absentes
+    var p  = page.GetValueOrDefault(1);
+    var ps = pageSize.HasValue
+        ? Math.Clamp(pageSize.Value, 1, 200)
+        : 50;
+
+    var normGroup = (group ?? string.Empty).Trim();
+
+    // Vérifier si le groupe existe
+    var groupExists = await userManager.Users
+        .AnyAsync(u => !string.IsNullOrWhiteSpace(u.Group) &&
+                       u.Group!.ToLower() == normGroup.ToLower());
+    if (!groupExists)
+        return Results.NotFound(new { Error = $"Group '{normGroup}' not found" });
+
+    // Récupérer seulement les utilisateurs avec le rôle Student
+    var studentsInRole = await userManager.GetUsersInRoleAsync("Student");
+
+    // Filtre par groupe + recherche
+    var filtered = studentsInRole
+        .Where(u => !string.IsNullOrWhiteSpace(u.Group) &&
+                    string.Equals(u.Group!.Trim(), normGroup, StringComparison.OrdinalIgnoreCase));
+
+    if (!string.IsNullOrWhiteSpace(q))
+    {
+        var term = q.Trim();
+        filtered = filtered.Where(u =>
+            (u.Email ?? "").Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            (u.FirstName ?? "").Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            (u.LastName ?? "").Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            (u.CodeApogee ?? "").Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            (u.CNE ?? "").Contains(term, StringComparison.OrdinalIgnoreCase)
+        );
+    }
+
+    var total = filtered.Count();
+
+    var items = filtered
+        .OrderBy(u => u.LastName).ThenBy(u => u.FirstName).ThenBy(u => u.Email)
+        .Skip((p - 1) * ps)
+        .Take(ps)
+        .Select(u => new {
+            u.Id,
+            u.Email,
+            u.FirstName,
+            u.LastName,
+            u.CodeApogee,
+            u.CNE,
+            Group = u.Group,
+            u.IsActive
+        })
+        .ToList();
+
+    return Results.Ok(new {
+        Group = normGroup,
+        Page = p,
+        PageSize = ps,
+        Total = total,
+        Items = items
+    });
+})
+.RequireAuthorization(/* ex: "Admin,Professor" */);
+
+
+// DELETE /auth/students/{id}  → supprime définitivement l'étudiant
+group.MapDelete("/students/{id}", async (
+        string id,
+        UserManager<ApplicationUser> userManager) =>
+    {
+        // 1) Charger l'utilisateur
+        var user = await userManager.FindByIdAsync(id);
+        if (user is null)
+            return Results.NotFound(new { Error = $"User '{id}' not found." });
+
+        // 2) Vérifier qu'il s'agit bien d'un étudiant (sécurité métier)
+        var isStudent = await userManager.IsInRoleAsync(user, "Student");
+        if (!isStudent)
+            return Results.BadRequest(new { Error = "Only users in role 'Student' can be deleted with this endpoint." });
+
+        
+        // 3) Supprimer
+        var result = await userManager.DeleteAsync(user);
+        if (!result.Succeeded)
+            return Results.Problem(detail: string.Join("; ", result.Errors.Select(e => $"{e.Code}: {e.Description}")),
+                statusCode: StatusCodes.Status409Conflict);
+
+        return Results.NoContent();
+    })
+    .RequireAuthorization(/* ex: roles: "Admin,Professor" */);
+
+
+// DELETE /auth/groups/{group}/students  → supprime définitivement tous les étudiants du groupe
+group.MapDelete("/groups/{group}/students", async (
+        string group,
+        UserManager<ApplicationUser> userManager) =>
+    {
+        var normGroup = (group ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normGroup))
+            return Results.BadRequest(new { Error = "Group name is required." });
+
+        // Récupérer uniquement les utilisateurs ayant le rôle Student
+        var allStudents = await userManager.GetUsersInRoleAsync("Student");
+
+        // Filtrer par groupe (case-insensitive)
+        var toDelete = allStudents
+            .Where(u => !string.IsNullOrWhiteSpace(u.Group) &&
+                        string.Equals(u.Group!.Trim(), normGroup, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (toDelete.Count == 0)
+            return Results.NotFound(new { Error = $"No students found in group '{normGroup}'." });
+
+        var errors = new List<string>();
+
+        foreach (var user in toDelete)
+        {
+            var result = await userManager.DeleteAsync(user);
+            if (!result.Succeeded)
+                errors.Add($"{user.Id}: {string.Join("; ", result.Errors.Select(e => $"{e.Code} {e.Description}"))}");
+        }
+
+        // (Optionnel) Si tu veux aussi supprimer la règle d'accès du groupe, voir l'exemple plus bas.
+
+        if (errors.Count > 0)
+            return Results.Problem(
+                detail: "Some deletions failed: " + string.Join(" | ", errors),
+                statusCode: StatusCodes.Status409Conflict);
+
+        return Results.NoContent();
+    })
+    .RequireAuthorization(/* ex: roles: "Admin,Professor" */);
+
+
+// DELETE /auth/students  → supprime définitivement tous les étudiants
+group.MapDelete("/students", async (UserManager<ApplicationUser> userManager) =>
+    {
+        var students = await userManager.GetUsersInRoleAsync("Student");
+        if (students.Count == 0)
+            return Results.NotFound(new { Error = "No students found." });
+
+        var errors = new List<string>();
+
+        foreach (var user in students)
+        {
+            var result = await userManager.DeleteAsync(user);
+            if (!result.Succeeded)
+                errors.Add($"{user.Id}: {string.Join("; ", result.Errors.Select(e => $"{e.Code} {e.Description}"))}");
+        }
+
+        if (errors.Count > 0)
+            return Results.Problem(
+                detail: "Some deletions failed: " + string.Join(" | ", errors),
+                statusCode: StatusCodes.Status409Conflict);
+
+        return Results.NoContent();
+    })
+    .RequireAuthorization(/* ex: roles: "Admin,Professor" */);
 
 
         return group;

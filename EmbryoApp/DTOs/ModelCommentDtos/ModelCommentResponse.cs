@@ -13,4 +13,7 @@ public sealed class ModelCommentResponse
 
     public string Content { get; set; } = default!;
     public DateTimeOffset CreatedAt { get; set; }
+    
+    public int?  UserRating    { get; set; }   // note 1..5 laissée par l’auteur du commentaire (ou null)
+    public Guid? ModelRatingId { get; set; }   // id de la note (ou null)
 }

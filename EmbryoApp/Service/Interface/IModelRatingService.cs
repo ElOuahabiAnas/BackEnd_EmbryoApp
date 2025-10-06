@@ -9,4 +9,10 @@ public interface IModelRatingService
     Task<bool> DeleteMyRatingAsync(Guid modelId, string userId, CancellationToken ct);
     Task<ModelRatingSummaryResponse> GetSummaryAsync(Guid modelId, string? currentUserId, CancellationToken ct);
     Task<int?> GetMyRatingAsync(Guid modelId, string userId, CancellationToken ct);
+    Task<(ModelRatingResponse? Response, string? Error)> UpdateByIdAsync(
+        Guid modelRatingId, string callerUserId, int rating, CancellationToken ct);
+
+    Task<(int? Rating, Guid? ModelRatingId)> GetMyRatingWithIdAsync(Guid modelId, string userId, CancellationToken ct);
+
+    
 }

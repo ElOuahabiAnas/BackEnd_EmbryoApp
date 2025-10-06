@@ -101,4 +101,43 @@ public sealed class ModelRatingService : IModelRatingService
             .Select(r => (int?)r.Rating)
             .FirstOrDefaultAsync(ct);
     }
+    
+    public async Task<(ModelRatingResponse? Response, string? Error)> UpdateByIdAsync(
+        Guid modelRatingId, string callerUserId, int rating, CancellationToken ct)
+    {
+        var entity = await _db.ModelRatings.FirstOrDefaultAsync(r => r.ModelRatingId == modelRatingId, ct);
+        if (entity is null) return (null, "not_found");
+
+        if (!string.Equals(entity.UserId, callerUserId, StringComparison.Ordinal))
+            return (null, "forbidden");
+
+        entity.Rating = rating;
+        entity.UpdatedAt = DateTimeOffset.UtcNow;
+        await _db.SaveChangesAsync(ct);
+
+        return (new ModelRatingResponse
+        {
+            ModelRatingId = entity.ModelRatingId,
+            ModelId = entity.ModelId,
+            UserId = entity.UserId,
+            Rating = entity.Rating,
+            CreatedAt = entity.CreatedAt,
+            UpdatedAt = entity.UpdatedAt
+        }, null);
+    }
+    
+    public async Task<(int? Rating, Guid? ModelRatingId)> GetMyRatingWithIdAsync(
+        Guid modelId, string userId, CancellationToken ct)
+    {
+        var row = await _db.ModelRatings.AsNoTracking()
+            .Where(r => r.ModelId == modelId && r.UserId == userId)
+            .Select(r => new { r.Rating, r.ModelRatingId })
+            .FirstOrDefaultAsync(ct);
+
+        return row is null
+            ? (null, null)
+            : ((int?)row.Rating, (Guid?)row.ModelRatingId);
+    }
+
+
 }

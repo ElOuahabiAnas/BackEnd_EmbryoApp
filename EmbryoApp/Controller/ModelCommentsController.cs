@@ -56,4 +56,47 @@ public sealed class ModelCommentsController : ControllerBase
         if (!ok) return NotFound(new { error = "comment_not_found_or_forbidden", modelId, commentId });
         return NoContent();
     }
+
+    [HttpPut("{commentId:guid}")]
+    [Authorize(Roles =
+        "Student,Professor")] // l’auteur doit juste être authentifié; le rôle prof n’accorde pas l’édition
+    [ProducesResponseType(typeof(ModelCommentResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ModelCommentResponse>> Update(Guid modelId, Guid commentId,
+        [FromBody] UpdateModelCommentRequest req, CancellationToken ct)
+    {
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+        var uid = CurrentUserId!;
+        var (res, err) = await _svc.UpdateAsync(commentId, uid, req, ct);
+
+        if (err == "not_found")
+            return NotFound(new { error = "comment_not_found", modelId, commentId });
+
+        if (err == "forbidden")
+            return Forbid(); // 403
+
+        return Ok(res);
+    }
+
+    [Authorize(Roles = "Student,Professor")]
+    [HttpGet("~/api/comments/me")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<ActionResult<object>> GetMyComments([FromQuery] MyCommentsQuery query, CancellationToken ct)
+    {
+        var uid = User.FindFirstValue(ClaimTypes.NameIdentifier)!; // ou ta propriété CurrentUserId
+
+        var (items, total, page, pageSize) = await _svc.ListMineAsync(uid, query, ct);
+
+        return Ok(new
+        {
+            Page = page,
+            PageSize = pageSize,
+            Total = total,
+            Items = items
+        });
+    }
+
+
 }

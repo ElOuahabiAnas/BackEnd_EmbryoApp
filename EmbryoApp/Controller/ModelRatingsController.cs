@@ -27,16 +27,22 @@ public sealed class ModelRatingsController : ControllerBase
         return Ok(res);
     }
 
-    // GET my rating
+    // GET my rating (+ id)
     [HttpGet("me")]
     [Authorize(Roles = "Student,Professor")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<ActionResult<object>> GetMine(Guid modelId, CancellationToken ct)
     {
         var uid = CurrentUserId!;
-        var my = await _svc.GetMyRatingAsync(modelId, uid, ct);
-        return Ok(new { modelId, myRating = my });
+        var (rating, modelRatingId) = await _svc.GetMyRatingWithIdAsync(modelId, uid, ct);
+
+        return Ok(new {
+            modelId,
+            modelRatingId,   // Guid?  → null si aucune note
+            myRating = rating // int?   → null si aucune note
+        });
     }
+
 
     // POST (create or update) my rating
     [HttpPost]
@@ -61,4 +67,27 @@ public sealed class ModelRatingsController : ControllerBase
         var ok = await _svc.DeleteMyRatingAsync(modelId, uid, ct);
         return ok ? NoContent() : NotFound(new { error = "rating_not_found", modelId });
     }
+    
+    [HttpPut("{ratingId:guid}")]
+    [Authorize(Roles = "Student,Professor")]
+    [ProducesResponseType(typeof(ModelRatingResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ModelRatingResponse>> UpdateById(
+        Guid modelId, Guid ratingId, [FromBody] UpdateModelRatingRequest req, CancellationToken ct)
+    {
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+        var uid = CurrentUserId!;
+        var (res, err) = await _svc.UpdateByIdAsync(ratingId, uid, req.Rating, ct);
+
+        if (err == "not_found")
+            return NotFound(new { error = "rating_not_found", modelId, ratingId });
+
+        if (err == "forbidden")
+            return Forbid();
+
+        return Ok(res);
+    }
+
 }

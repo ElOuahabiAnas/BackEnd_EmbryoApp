@@ -37,7 +37,18 @@ public sealed class ModelCommentService : IModelCommentService
                 UserLastName = c.User!.LastName,
                 UserEmail = c.User!.Email,
                 Content = c.Content,
-                CreatedAt = c.CreatedAt
+                CreatedAt = c.CreatedAt,
+                
+                // NEW: récupérer la note de l’auteur sur ce modèle (si elle existe)
+                UserRating = _db.ModelRatings
+                .Where(r => r.ModelId == c.ModelId && r.UserId == c.UserId)
+                .Select(r => (int?)r.Rating)
+                .FirstOrDefault(),
+
+                ModelRatingId = _db.ModelRatings
+                    .Where(r => r.ModelId == c.ModelId && r.UserId == c.UserId)
+                    .Select(r => (Guid?)r.ModelRatingId)
+                    .FirstOrDefault()
             })
             .ToListAsync(ct);
 
@@ -92,5 +103,98 @@ public sealed class ModelCommentService : IModelCommentService
         _db.ModelComments.Remove(entity);
         await _db.SaveChangesAsync(ct);
         return true;
+    }
+
+
+    public async Task<(ModelCommentResponse? Response, string? Error)> UpdateAsync(
+        Guid modelCommentId,
+        string callerUserId,
+        UpdateModelCommentRequest req,
+        CancellationToken ct)
+    {
+        var entity = await _db.ModelComments
+            .Include(c => c.User)
+            .FirstOrDefaultAsync(c => c.ModelCommentId == modelCommentId, ct);
+
+        if (entity is null)
+            return (null, "not_found");
+
+        // Seul l'auteur peut modifier son commentaire (pas même Professor ici)
+        if (entity.UserId != callerUserId)
+            return (null, "forbidden");
+
+        entity.Content = req.Content.Trim();
+        // (Optionnel) si tu ajoutes un champ UpdatedAt dans ModelComment: entity.UpdatedAt = DateTimeOffset.UtcNow;
+
+        await _db.SaveChangesAsync(ct);
+
+        return (new ModelCommentResponse
+        {
+            ModelCommentId = entity.ModelCommentId,
+            ModelId = entity.ModelId,
+            UserId = entity.UserId,
+            UserFirstName = entity.User?.FirstName,
+            UserLastName = entity.User?.LastName,
+            UserEmail = entity.User?.Email,
+            Content = entity.Content,
+            CreatedAt = entity.CreatedAt
+        }, null);
+    }
+    
+    
+    public async Task<(IReadOnlyList<ModelCommentResponse> Items, int Total, int Page, int PageSize)> ListMineAsync(
+        string userId, MyCommentsQuery query, CancellationToken ct)
+    {
+        var p  = Math.Max(1, query.Page ?? 1);
+        var ps = Math.Clamp(query.PageSize ?? 20, 1, 200);
+
+        var qset = _db.ModelComments
+            .AsNoTracking()
+            .Include(c => c.User)
+            .Where(c => c.UserId == userId);
+
+        if (query.ModelId is Guid mid && mid != Guid.Empty)
+            qset = qset.Where(c => c.ModelId == mid);
+
+        if (!string.IsNullOrWhiteSpace(query.Q))
+        {
+            var term = query.Q.Trim();
+            qset = qset.Where(c => c.Content != null && EF.Functions.ILike(c.Content, $"%{term}%"));
+            // Si tu n’utilises pas PostgreSQL, remplace par Contains/ToLower() selon ton provider
+        }
+
+        var total = await qset.CountAsync(ct);
+
+        var items = await qset
+            .OrderByDescending(c => c.CreatedAt)
+            .Skip((p - 1) * ps)
+            .Take(ps)
+            .Select(c => new ModelCommentResponse
+            {
+                ModelCommentId = c.ModelCommentId,
+                ModelId        = c.ModelId,
+                UserId         = c.UserId,
+                UserFirstName  = c.User!.FirstName,
+                UserLastName   = c.User!.LastName,
+                UserEmail      = c.User!.Email,
+                Content        = c.Content,
+                CreatedAt      = c.CreatedAt,
+                // + UpdatedAt si tu l’as ajouté
+                
+                // NEW: rating de l’auteur (l’utilisateur courant) sur CE modèle
+                UserRating = _db.ModelRatings
+                .Where(r => r.ModelId == c.ModelId && r.UserId == c.UserId)
+                .Select(r => (int?)r.Rating)
+                .FirstOrDefault(),
+
+                ModelRatingId = _db.ModelRatings
+                    .Where(r => r.ModelId == c.ModelId && r.UserId == c.UserId)
+                    .Select(r => (Guid?)r.ModelRatingId)
+                    .FirstOrDefault()
+                
+            })
+            .ToListAsync(ct);
+
+        return (items, total, p, ps);
     }
 }
