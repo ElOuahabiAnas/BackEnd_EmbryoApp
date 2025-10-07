@@ -14,19 +14,42 @@ public sealed class GroupAccessRuleService : IGroupAccessRuleService
 
     public async Task<Guid> CreateAsync(CreateGroupAccessRuleRequest req, CancellationToken ct)
     {
-        var entity = new GroupAccessRule
-        {
-            RuleId = Guid.NewGuid(),
-            GroupName = req.GroupName.Trim(),
-            WeekDays = req.WeekDays,
-            IsAllowed = req.IsAllowed,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
+        var name = (req.GroupName ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("GroupName is required.", nameof(req.GroupName));
 
-        _db.Add(entity);
-        await _db.SaveChangesAsync(ct);
-        return entity.RuleId;
+        // Chercher une règle existante pour ce groupe (insensible à la casse)
+        var existing = await _db.Set<GroupAccessRule>()
+            .OrderByDescending(r => r.CreatedAt)   // si héritage de doublons, on prend la plus récente
+            .FirstOrDefaultAsync(r => r.GroupName.ToLower() == name.ToLower(), ct);
+
+        if (existing is null)
+        {
+            // CREATE
+            var entity = new GroupAccessRule
+            {
+                RuleId    = Guid.NewGuid(),
+                GroupName = name,
+                WeekDays  = req.WeekDays,
+                IsAllowed = req.IsAllowed,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+            _db.Add(entity);
+            await _db.SaveChangesAsync(ct);
+            return entity.RuleId;
+        }
+        else
+        {
+            // UPDATE (upsert)
+            existing.WeekDays  = req.WeekDays;
+            existing.IsAllowed = req.IsAllowed;
+            existing.UpdatedAt = DateTimeOffset.UtcNow;
+
+            await _db.SaveChangesAsync(ct);
+            return existing.RuleId;
+        }
     }
+
 
     public async Task<bool> UpdateAsync(Guid id, UpdateGroupAccessRuleRequest req, CancellationToken ct)
     {

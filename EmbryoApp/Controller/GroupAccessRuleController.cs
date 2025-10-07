@@ -1,6 +1,7 @@
 ﻿using System.Security.Claims;
 using EmbryoApp.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace EmbryoApp.Controller;
 
@@ -35,13 +36,29 @@ public sealed class GroupAccessRuleController : ControllerBase
     [HttpPost]
     [Authorize(Roles = "Professor")]
     [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult> Create([FromBody] CreateGroupAccessRuleRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
-        var id = await _svc.CreateAsync(req, ct);
-        return CreatedAtAction(nameof(List), new { id }, new { id });
+
+        var name = (req.GroupName ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(name))
+            return BadRequest(new { error = "group_name_required" });
+
+        // On regarde s'il existe déjà une règle pour ce groupe (case-insensitive)
+        var existing = await _db.Set<GroupAccessRule>()
+            .OrderByDescending(r => r.CreatedAt)
+            .FirstOrDefaultAsync(r => r.GroupName.ToLower() == name.ToLower(), ct);
+
+        var id = await _svc.CreateAsync(req, ct); // upsert dans le service
+
+        if (existing is null)
+            return CreatedAtAction(nameof(List), new { id }, new { id, message = "created" });
+        else
+            return Ok(new { id, message = "updated" });
     }
+
 
     [HttpPut("{id:guid}")]
     [Authorize(Roles = "Professor")]

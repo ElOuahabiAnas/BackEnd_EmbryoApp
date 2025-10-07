@@ -460,6 +460,127 @@ group.MapDelete("/students", async (UserManager<ApplicationUser> userManager) =>
     .RequireAuthorization(/* ex: roles: "Admin,Professor" */);
 
 
+// POST /auth/register-auto  → crée un étudiant avec mot de passe auto-généré et envoie par email
+group.MapPost("/register-auto", async (
+    StudentRegisterAutoRequest req,
+    UserManager<ApplicationUser> userManager,
+    RoleManager<IdentityRole> roleManager,
+    IEmailSender emailSender,
+    ILoggerFactory loggerFactory) =>
+{
+    var log = loggerFactory.CreateLogger("AuthRegisterAuto");
+
+    // 1) existant ?
+    var existing = await userManager.FindByEmailAsync(req.Email);
+    if (existing is not null)
+        return Results.Conflict(new { Error = "email_already_exists" });
+
+    // 2) user
+    var user = new ApplicationUser
+    {
+        UserName   = req.Email,
+        Email      = req.Email,
+        FirstName  = req.FirstName,
+        LastName   = req.LastName,
+        CodeApogee = req.CodeApogee,
+        CNE        = req.CNE,
+        Group      = req.Group,
+        IsActive   = true
+    };
+
+    // 3) password auto (même helper que /auth/import-students)
+    var password = PasswordHelper.GenerateSecurePassword(); // ex: 16+ chars, complexité OK
+
+    var create = await userManager.CreateAsync(user, password);
+    if (!create.Succeeded)
+    {
+        log.LogWarning("Create user failed: {Errors}",
+            string.Join(" | ", create.Errors.Select(e => $"{e.Code}:{e.Description}")));
+        return Results.BadRequest(create.Errors);
+    }
+
+    // 4) rôle Student requis
+    if (!await roleManager.RoleExistsAsync("Student"))
+        return Results.StatusCode(500);
+
+    var addToRole = await userManager.AddToRoleAsync(user, "Student");
+    if (!addToRole.Succeeded)
+        return Results.BadRequest(addToRole.Errors);
+
+    // 5) envoi email (même pattern que forgot/import)
+    try
+    {
+        await emailSender.SendAsync(user.Email!, "Accès à la plateforme",
+            $"Bonjour {user.FirstName ?? ""},<br/>" +
+            $"Votre compte a été créé.<br/>" +
+            $"Votre mot de passe temporaire est : <b>{password}</b><br/><br/>" +
+            $"Par sécurité, changez-le après connexion dans votre espace.");
+    }
+    catch (Exception ex)
+    {
+        // Selon ta politique, tu peux décider de supprimer l'utilisateur si mail échoue
+        log.LogError(ex, "Erreur envoi email à {Email}", user.Email);
+        // return Results.Problem("email_send_failed"); // si tu préfères échouer
+    }
+
+    log.LogInformation("User {Email} registered (Student) with auto password.", req.Email);
+
+    return Results.Created($"/auth/users/{user.Id}", new {
+        Message = "Registered with Student role (password emailed)",
+        user.Id,
+        user.Email,
+        user.FirstName,
+        user.LastName,
+        user.CodeApogee,
+        user.CNE,
+        user.Group,
+        user.IsActive
+        // ⚠️ On ne renvoie PAS le mot de passe en réponse API.
+    });
+});
+
+// PUT /auth/me  → met à jour le profil de l’utilisateur connecté (champs simples)
+group.MapPut("/me", async (
+        ClaimsPrincipal principal,
+        UpdateMyProfileRequest req,
+        UserManager<ApplicationUser> userManager) =>
+    {
+        var user = await userManager.GetUserAsync(principal);
+        if (user is null) return Results.Unauthorized();
+
+        // (Optionnel) petites validations côté API
+        static string? TrimOrNull(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+        var newFirstName  = TrimOrNull(req.FirstName);
+        var newLastName   = TrimOrNull(req.LastName);
+        var newCodeApogee = TrimOrNull(req.CodeApogee);
+        var newCne        = TrimOrNull(req.CNE);
+
+        // Appliquer uniquement si fourni (permet les partial updates)
+        if (req.FirstName  != null) user.FirstName  = newFirstName;
+        if (req.LastName   != null) user.LastName   = newLastName;
+        if (req.CodeApogee != null) user.CodeApogee = newCodeApogee;
+        if (req.CNE        != null) user.CNE        = newCne;
+
+        var result = await userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+            return Results.BadRequest(new { Errors = result.Errors });
+
+        return Results.Ok(new {
+            Message = "Profile updated",
+            id = user.Id,
+            email = user.Email,
+            firstName = user.FirstName,
+            lastName  = user.LastName,
+            codeApogee = user.CodeApogee,
+            cne = user.CNE,
+            group = user.Group,
+            isActive = user.IsActive
+        });
+    })
+    .RequireAuthorization();
+
+
         return group;
     }
 }
