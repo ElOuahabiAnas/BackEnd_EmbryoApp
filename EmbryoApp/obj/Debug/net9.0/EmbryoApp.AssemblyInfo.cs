@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("EmbryoApp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ad43ec73d834faac414bb0a1bb9162f5a4254c8f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+46bb408e9727727a610fba248b82640576dea9a4")]
 [assembly: System.Reflection.AssemblyProductAttribute("EmbryoApp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("EmbryoApp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
