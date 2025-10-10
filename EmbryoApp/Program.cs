@@ -29,6 +29,16 @@ builder.Services.AddIdentityApiEndpoints<ApplicationUser>()
     .AddDefaultTokenProviders(); // <--- important pour reset/confirm
 
 
+builder.Services.Configure<IdentityOptions>(options =>
+{
+    options.Password.RequiredLength = 10;
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireNonAlphanumeric = false; // ← accepte A-Z/a-z/0-9 uniquement
+    options.Password.RequiredUniqueChars = 1;
+});
+
 
 builder.Services.AddControllers();
 builder.Services.AddAuthorization();
@@ -93,6 +103,7 @@ builder.Services.AddScoped<EmbryoApp.Service.Interface.IEmailSender, EmbryoApp.S
 builder.Services.AddScoped<EmbryoApp.Service.Interface.IGroupAccessRuleService, EmbryoApp.Service.Implementation.GroupAccessRuleService>();
 builder.Services.AddScoped<EmbryoApp.Service.Interface.IModelRatingService, EmbryoApp.Service.Implementation.ModelRatingService>();
 builder.Services.AddScoped<EmbryoApp.Service.Interface.IModelCommentService, EmbryoApp.Service.Implementation.ModelCommentService>();
+
 
 
 

@@ -31,11 +31,56 @@ public record AuthChangePasswordRequest(string CurrentPassword, string NewPasswo
 
 
 
-
-
-
 public static class IdentityApiExtensions
 {
+    
+    
+    private static string GenerateAlphaNumPassword(int length = 10)
+    {
+        if (length < 3) throw new ArgumentOutOfRangeException(nameof(length), "length must be >= 3");
+
+        const string U = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const string L = "abcdefghijklmnopqrstuvwxyz";
+        const string D = "0123456789";
+        const string ALL = U + L + D;
+
+        var pwd = new char[length];
+        using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
+
+        // Garantir 1 majuscule, 1 minuscule, 1 chiffre
+        pwd[0] = U[GetUnbiasedIndex(rng, U.Length)];
+        pwd[1] = L[GetUnbiasedIndex(rng, L.Length)];
+        pwd[2] = D[GetUnbiasedIndex(rng, D.Length)];
+
+        // Le reste aléatoire parmi ALL
+        for (int i = 3; i < length; i++)
+            pwd[i] = ALL[GetUnbiasedIndex(rng, ALL.Length)];
+
+        // Shuffle Fisher-Yates
+        for (int i = length - 1; i > 0; i--)
+        {
+            int j = GetUnbiasedIndex(rng, i + 1);
+            (pwd[i], pwd[j]) = (pwd[j], pwd[i]);
+        }
+        return new string(pwd);
+    }
+
+    private static int GetUnbiasedIndex(System.Security.Cryptography.RandomNumberGenerator rng, int maxExclusive)
+    {
+        // tirage uniforme sans biais modulo
+        var upperBound = (uint.MaxValue / (uint)maxExclusive) * (uint)maxExclusive;
+        Span<byte> b = stackalloc byte[4];
+        uint r;
+        do
+        {
+            rng.GetBytes(b);
+            r = BitConverter.ToUInt32(b);
+        } while (r >= upperBound);
+
+        return (int)(r % (uint)maxExclusive);
+    }
+
+    
     public static RouteGroupBuilder MapCustomAuth(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/auth");
@@ -198,46 +243,115 @@ group.MapPost("/import-students", async (
     var file = req.File;
     if (file is null) return Results.BadRequest(new { Error = "No file uploaded" });
 
-    var groupName = Path.GetFileNameWithoutExtension(file.FileName);
+    // Nom de groupe par défaut = nom du fichier (fallback si pas de colonne Group)
+    var defaultGroupName = Path.GetFileNameWithoutExtension(file.FileName);
 
     using var stream = file.OpenReadStream();
     using var workbook = new XLWorkbook(stream);
     var worksheet = workbook.Worksheets.First();
 
-    // ✅ Vérifier le rôle une seule fois
+    // Vérifier le rôle Student une seule fois
     if (!await roleManager.RoleExistsAsync("Student"))
         return Results.StatusCode(500);
+
+    // ---------- Lecture de l'en-tête & construction de la map -----------
+    var headerRow = worksheet.FirstRowUsed();
+    if (headerRow is null)
+        return Results.BadRequest(new { Error = "Empty worksheet" });
+
+    // Normalisation: minuscules, trim, retirer espaces/accents/punctuations simples
+    string Norm(string s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return "";
+        var t = s.Trim().ToLowerInvariant();
+
+        // enlever accents de base
+        var normalized = t.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(capacity: normalized.Length);
+        foreach (var ch in normalized)
+        {
+            var uc = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch);
+            if (uc != System.Globalization.UnicodeCategory.NonSpacingMark)
+                sb.Append(ch);
+        }
+        t = sb.ToString().Normalize(NormalizationForm.FormC);
+
+        // enlever espaces, _ et - pour matcher "code apogee", "code_apogee", etc.
+        t = t.Replace(" ", "").Replace("_", "").Replace("-", "");
+        return t;
+    }
+
+    // Map header normalisé -> index de colonne
+    var headerMap = new Dictionary<string, int>();
+    foreach (var cell in headerRow.CellsUsed())
+    {
+        var key = Norm(cell.GetString());
+        if (!headerMap.ContainsKey(key))
+            headerMap[key] = cell.Address.ColumnNumber;
+    }
+
+    // Helper: récupérer l’index d’une colonne via une liste d’alias normalisés
+    int? GetCol(params string[] aliases)
+    {
+        foreach (var a in aliases)
+        {
+            var key = Norm(a);
+            if (headerMap.TryGetValue(key, out var idx))
+                return idx;
+        }
+        return null;
+    }
+
+    // Colonnes recherchées (avec alias)
+    var colEmail      = GetCol("email", "e-mail", "courriel", "mail");
+    var colCne        = GetCol("cne");
+    var colCodeApogee = GetCol("codeapogee", "codeapogee", "codeapogee", "code apogee", "code apogée");
+    var colFirstName  = GetCol("firstname", "first name", "prenom", "prénom");
+    var colLastName   = GetCol("lastname", "last name", "nom");
+    var colGroup      = GetCol("group", "groupe");
+
+    if (colEmail is null)
+        return Results.BadRequest(new { Error = "Required column 'Email' not found" });
 
     var usersCreated = new List<object>();
     var emailsToSend = new List<(string Email, string FirstName, string Password)>();
 
-    foreach (var row in worksheet.RowsUsed().Skip(1))
+    // ---------- Parcours des lignes de données -----------
+    foreach (var row in worksheet.RowsUsed().Skip(1)) // skip header
     {
-        var email = row.Cell(1).GetString().Trim();
-        var codeApogee = row.Cell(2).GetString().Trim();
-        var cne = row.Cell(3).GetString().Trim();
-        var firstName = row.Cell(4).GetString().Trim();
-        var lastName = row.Cell(5).GetString().Trim();
+        string GetStr(int? col) => (col is null) ? "" : row.Cell(col.Value).GetString().Trim();
 
-        if (string.IsNullOrWhiteSpace(email)) continue;
+        var email     = GetStr(colEmail);
+        var codeApogee= GetStr(colCodeApogee);
+        var cne       = GetStr(colCne);
+        var firstName = GetStr(colFirstName);
+        var lastName  = GetStr(colLastName);
+        var groupName = GetStr(colGroup);
 
-        var password = PasswordHelper.GenerateSecurePassword();
+        if (string.IsNullOrWhiteSpace(email))
+            continue; // ligne vide ou invalide
+
+        if (string.IsNullOrWhiteSpace(groupName))
+            groupName = defaultGroupName; // fallback: nom du fichier
+
+        var password = GenerateAlphaNumPassword(10);
 
         var user = new ApplicationUser
         {
-            UserName = email,
-            Email = email,
-            FirstName = firstName,
-            LastName = lastName,
-            CodeApogee = codeApogee,
-            CNE = cne,
-            Group = groupName,
-            IsActive = true
+            UserName   = email,
+            Email      = email,
+            FirstName  = string.IsNullOrWhiteSpace(firstName) ? null : firstName,
+            LastName   = string.IsNullOrWhiteSpace(lastName)  ? null : lastName,
+            CodeApogee = string.IsNullOrWhiteSpace(codeApogee) ? null : codeApogee,
+            CNE        = string.IsNullOrWhiteSpace(cne) ? null : cne,
+            Group      = string.IsNullOrWhiteSpace(groupName) ? null : groupName,
+            IsActive   = true
         };
 
         var create = await userManager.CreateAsync(user, password);
         if (!create.Succeeded)
         {
+            // log et passer à la ligne suivante
             log.LogWarning("Create user failed: {Email} {Errors}",
                 email,
                 string.Join(" | ", create.Errors.Select(e => e.Description)));
@@ -246,8 +360,7 @@ group.MapPost("/import-students", async (
 
         await userManager.AddToRoleAsync(user, "Student");
 
-        // ✅ Stocke pour envoyer plus tard
-        emailsToSend.Add((user.Email!, firstName, password));
+        emailsToSend.Add((user.Email!, user.FirstName ?? "", password));
 
         usersCreated.Add(new {
             user.Id,
@@ -260,14 +373,14 @@ group.MapPost("/import-students", async (
         });
     }
 
-    // ✅ Envoi des emails après création de tous les utilisateurs
+    // Envoi des emails après les créations
     foreach (var entry in emailsToSend)
     {
         try
         {
             await emailSender.SendAsync(entry.Email, "Accès à la plateforme",
                 $"Bonjour {entry.FirstName},<br/>" +
-                $"Votre compte a été créé dans le groupe <b>{groupName}</b>.<br/>" +
+                $"Votre compte a été créé dans le groupe <b>{(string.IsNullOrWhiteSpace(defaultGroupName) ? "N/A" : defaultGroupName)}</b>.<br/>" +
                 $"Votre mot de passe est : <b>{entry.Password}</b><br/><br/>" +
                 $"Merci de le changer après connexion.");
         }
@@ -277,8 +390,10 @@ group.MapPost("/import-students", async (
         }
     }
 
-    return Results.Ok(new { Message = "Import terminé", Group = groupName, Users = usersCreated });
-}).DisableAntiforgery();
+    return Results.Ok(new { Message = "Import terminé", Users = usersCreated });
+})
+.DisableAntiforgery();
+
 
 group.MapGet("/groups/with-counts", async (UserManager<ApplicationUser> userManager) =>
     {
@@ -489,7 +604,7 @@ group.MapPost("/register-auto", async (
     };
 
     // 3) password auto (même helper que /auth/import-students)
-    var password = PasswordHelper.GenerateSecurePassword(); // ex: 16+ chars, complexité OK
+    var password = GenerateAlphaNumPassword(10);
 
     var create = await userManager.CreateAsync(user, password);
     if (!create.Succeeded)
@@ -580,6 +695,51 @@ group.MapPut("/me", async (
     })
     .RequireAuthorization();
 
+// PUT /auth/students/{id} → Prof/Admin met à jour les données d’un étudiant (incl. Group)
+group.MapPut("/students/{id}", async (
+        string id,
+        UpdateStudentByIdRequest req,
+        UserManager<ApplicationUser> userManager) =>
+    {
+        // 1) Charger l’utilisateur
+        var user = await userManager.FindByIdAsync(id);
+        if (user is null)
+            return Results.NotFound(new { Error = $"User '{id}' not found." });
+
+        // 2) Vérifier qu’il s’agit d’un étudiant
+        var isStudent = await userManager.IsInRoleAsync(user, "Student");
+        if (!isStudent)
+            return Results.BadRequest(new { Error = "Only users in role 'Student' can be updated with this endpoint." });
+
+        // 3) Helpers
+        static string? TrimOrNull(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+        // 4) Appliquer uniquement les champs fournis (partial update)
+        if (req.FirstName  is not null) user.FirstName  = TrimOrNull(req.FirstName);
+        if (req.LastName   is not null) user.LastName   = TrimOrNull(req.LastName);
+        if (req.CodeApogee is not null) user.CodeApogee = TrimOrNull(req.CodeApogee);
+        if (req.CNE        is not null) user.CNE        = TrimOrNull(req.CNE);
+        if (req.Group      is not null) user.Group      = TrimOrNull(req.Group); // professeur peut modifier le groupe
+
+        // 5) Persister
+        var result = await userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+            return Results.BadRequest(new { Errors = result.Errors });
+
+        // 6) Réponse
+        return Results.Ok(new {
+            Message = "Student updated",
+            id = user.Id,
+            email = user.Email,
+            firstName = user.FirstName,
+            lastName  = user.LastName,
+            codeApogee = user.CodeApogee,
+            cne = user.CNE,
+            group = user.Group,
+            isActive = user.IsActive
+        });
+    })
+    .RequireAuthorization(/* ex: roles: "Professor,Admin" */);
 
         return group;
     }
