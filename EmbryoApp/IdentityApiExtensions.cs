@@ -454,7 +454,7 @@ group.MapGet("/groups/{group}/students", async (
     var total = filtered.Count();
 
     var items = filtered
-        .OrderBy(u => u.LastName).ThenBy(u => u.FirstName).ThenBy(u => u.Email)
+        .OrderBy(u => u.Email) // tri alphabétique par email A → Z
         .Skip((p - 1) * ps)
         .Take(ps)
         .Select(u => new {
@@ -468,6 +468,7 @@ group.MapGet("/groups/{group}/students", async (
             u.IsActive
         })
         .ToList();
+
 
     return Results.Ok(new {
         Group = normGroup,

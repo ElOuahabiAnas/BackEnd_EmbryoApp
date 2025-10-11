@@ -10,4 +10,6 @@ public interface IModel3DService
     Task<PagedResult<Model3DResponse>> ListAsync(Model3DListQuery query, CancellationToken ct);
     Task<Model3DResponse?> UpdateAsync(Guid modelId, UpdateModel3DRequest req, CancellationToken ct);
     Task<bool> DeleteAsync(Guid modelId, CancellationToken ct);
+    Task<List<string>> GetAllDisciplinesAsync(CancellationToken ct);
+
 }

@@ -80,4 +80,15 @@ public sealed class Model3DController : ControllerBase
         var ok = await _svc.DeleteAsync(id, ct);
         return ok ? NoContent() : NotFound();
     }
+    
+    // GET /api/models/disciplines → renvoie la liste des disciplines uniques
+    [HttpGet("disciplines")]
+    [AllowAnonymous] // ou [Authorize] si tu veux restreindre
+    [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<string>>> GetAllDisciplines(CancellationToken ct)
+    {
+        var result = await _svc.GetAllDisciplinesAsync(ct);
+        return Ok(result);
+    }
+
 }

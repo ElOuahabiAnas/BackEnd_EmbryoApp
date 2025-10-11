@@ -21,4 +21,7 @@ public interface INotificationService
     Task<int> MarkAllReadAsync(string targetUserId, string callerUserId, bool isElevated, CancellationToken ct);
 
     Task<bool> DeleteAsync(Guid id, CancellationToken ct); // optionnel (élevé)
+    
+    Task<int> CreateGlobalForAllStudentsAsync(CreateNotificationRequest req, CancellationToken ct);
+
 }

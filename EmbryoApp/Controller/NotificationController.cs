@@ -53,21 +53,21 @@ public sealed class NotificationController : ControllerBase
         return Ok(item);
     }
     
-    // CREATE GLOBAL (Professor only)
+    // CREATE GLOBAL (Professor only) → crée une notif POUR CHAQUE ÉTUDIANT (UserId renseigné)
     [HttpPost("global")]
-    [Authorize(Roles = "Student,Professor")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
+    [Authorize(Roles = "Professor")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult> CreateGlobal([FromBody] CreateNotificationRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
-        // Force UserId à null => notif globale
-        req.UserId = null;
+        // On ignore req.UserId ici : c’est un broadcast à tous les étudiants
+        var created = await _svc.CreateGlobalForAllStudentsAsync(req, ct);
 
-        var id = await _svc.CreateAsync(req, ct);
-        return CreatedAtAction(nameof(Get), new { id }, new { id });
+        return Ok(new { created, message = "notifications_created_for_all_students" });
     }
+
     
     // GET notifications of the connected user
     [HttpGet("me")]

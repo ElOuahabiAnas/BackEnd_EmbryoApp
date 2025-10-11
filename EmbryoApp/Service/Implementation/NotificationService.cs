@@ -31,7 +31,7 @@ public sealed class NotificationService : INotificationService
             else
             {
                 // Étudiant → notifs perso + globales
-                baseQuery = baseQuery.Where(n => n.UserId == q.UserId || n.UserId == null);
+                baseQuery = baseQuery.Where(n => n.UserId == q.UserId);
             }
         }
 
@@ -137,4 +137,45 @@ public sealed class NotificationService : INotificationService
         await _db.SaveChangesAsync(ct);
         return true;
     }
+    
+    public async Task<int> CreateGlobalForAllStudentsAsync(CreateNotificationRequest req, CancellationToken ct)
+    {
+        // 1) Rôle STUDENT
+        var studentRoleId = await _db.Roles
+            .Where(r => r.NormalizedName == "STUDENT")
+            .Select(r => r.Id)
+            .FirstOrDefaultAsync(ct);
+        if (string.IsNullOrEmpty(studentRoleId)) return 0;
+
+        // 2) Tous les UserIds des étudiants
+        var studentIds = await (
+            from u in _db.Users
+            join ur in _db.UserRoles on u.Id equals ur.UserId
+            where ur.RoleId == studentRoleId
+            select u.Id
+        ).ToListAsync(ct);
+        if (studentIds.Count == 0) return 0;
+
+        // 3) Construire les entités (une notif par étudiant)
+        var now = DateTimeOffset.UtcNow;
+        var title = req.Title?.Trim() ?? "";
+        var body  = req.Body?.Trim() ?? "";
+
+        var entities = studentIds.Select(uid => new Notification
+        {
+            NotificationId = Guid.NewGuid(),
+            Title  = title,
+            Body   = body,
+            SentAt = now,
+            IsRead = false,
+            UserId = uid  // ← affectée à chaque étudiant
+        }).ToList();
+
+        // 4) Insert en lot
+        await _db.Set<Notification>().AddRangeAsync(entities, ct);
+        var created = await _db.SaveChangesAsync(ct);
+
+        return created; // = nombre de lignes insérées
+    }
+
 }

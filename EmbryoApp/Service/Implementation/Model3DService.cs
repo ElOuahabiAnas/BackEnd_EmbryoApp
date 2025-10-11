@@ -118,4 +118,24 @@ public sealed class Model3DService : IModel3DService
         PublishedAt = m.PublishedAt,
         AuthorUserId = m.AuthorUserId
     };
+    
+    
+    public async Task<List<string>> GetAllDisciplinesAsync(CancellationToken ct)
+    {
+        var disciplines = await _db.Models3D
+            .AsNoTracking()
+            .Where(m => !string.IsNullOrWhiteSpace(m.Discipline))
+            .Select(m => m.Discipline!.Trim())
+            .ToListAsync(ct);
+
+        // Normaliser : insensible à la casse → ToLowerInvariant()
+        var distinctInsensitive = disciplines
+            .GroupBy(d => d.ToLowerInvariant())           // groupe les disciplines équivalentes
+            .Select(g => g.First())                       // garde la 1re écriture rencontrée
+            .OrderBy(d => d, StringComparer.OrdinalIgnoreCase) // tri A→Z sans tenir compte de la casse
+            .ToList();
+
+        return distinctInsensitive;
+    }
+
 }
