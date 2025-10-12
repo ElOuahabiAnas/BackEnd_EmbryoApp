@@ -24,4 +24,6 @@ public interface INotificationService
     
     Task<int> CreateGlobalForAllStudentsAsync(CreateNotificationRequest req, CancellationToken ct);
 
+    Task<int> CreateForGroupAsync(string groupName, CreateNotificationRequest req, CancellationToken ct);
+
 }

@@ -394,11 +394,22 @@ group.MapPost("/import-students", async (
 })
 .DisableAntiforgery();
 
-
-group.MapGet("/groups/with-counts", async (UserManager<ApplicationUser> userManager) =>
+// GET /auth/groups/with-counts?groupName=GI3
+group.MapGet("/groups/with-counts", async (
+        [FromQuery] string? groupName,
+        UserManager<ApplicationUser> userManager) =>
     {
-        var data = await userManager.Users
-            .Where(u => !string.IsNullOrWhiteSpace(u.Group))
+        var query = userManager.Users
+            .Where(u => !string.IsNullOrWhiteSpace(u.Group));
+
+        if (!string.IsNullOrWhiteSpace(groupName))
+        {
+            var term = groupName.Trim();
+            query = query.Where(u => EF.Functions.ILike(u.Group!, $"%{term}%"));
+        }
+
+
+        var data = await query
             .GroupBy(u => u.Group!)
             .Select(g => new { Group = g.Key, Count = g.Count() })
             .OrderBy(x => x.Group)
@@ -407,6 +418,7 @@ group.MapGet("/groups/with-counts", async (UserManager<ApplicationUser> userMana
         return Results.Ok(data);
     })
     .RequireAuthorization();
+
 
 // GET /auth/groups/{group}/students?Page=1&PageSize=50&q=search
 group.MapGet("/groups/{group}/students", async (
@@ -508,46 +520,65 @@ group.MapDelete("/students/{id}", async (
     .RequireAuthorization(/* ex: roles: "Admin,Professor" */);
 
 
-// DELETE /auth/groups/{group}/students  → supprime définitivement tous les étudiants du groupe
+// DELETE /auth/groups/{group}/students  → supprime tous les étudiants du groupe
+// et supprime aussi la/les GroupAccessRule correspondantes
 group.MapDelete("/groups/{group}/students", async (
         string group,
-        UserManager<ApplicationUser> userManager) =>
+        UserManager<ApplicationUser> userManager,
+        EmbryoApp.Data.AuthDbContext db) =>
+{
+    var normGroup = (group ?? string.Empty).Trim();
+    if (string.IsNullOrWhiteSpace(normGroup))
+        return Results.BadRequest(new { Error = "Group name is required." });
+
+    // Transaction pour garder la cohérence (suppression users + rules)
+    await using var tx = await db.Database.BeginTransactionAsync();
+
+    // 1) Récupérer les étudiants (rôle Student) du groupe (case-insensitive)
+    var allStudents = await userManager.GetUsersInRoleAsync("Student"); // Identity store = AuthDbContext
+    var toDelete = allStudents
+        .Where(u => !string.IsNullOrWhiteSpace(u.Group)
+                 && string.Equals(u.Group!.Trim(), normGroup, StringComparison.OrdinalIgnoreCase))
+        .ToList();
+
+    var errors = new List<string>();
+    foreach (var user in toDelete)
     {
-        var normGroup = (group ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(normGroup))
-            return Results.BadRequest(new { Error = "Group name is required." });
+        var res = await userManager.DeleteAsync(user);
+        if (!res.Succeeded)
+            errors.Add($"{user.Id}: {string.Join("; ", res.Errors.Select(e => $"{e.Code} {e.Description}"))}");
+    }
 
-        // Récupérer uniquement les utilisateurs ayant le rôle Student
-        var allStudents = await userManager.GetUsersInRoleAsync("Student");
+    if (errors.Count > 0)
+    {
+        await tx.RollbackAsync();
+        return Results.Problem(
+            detail: "Some deletions failed: " + string.Join(" | ", errors),
+            statusCode: StatusCodes.Status409Conflict);
+    }
 
-        // Filtrer par groupe (case-insensitive)
-        var toDelete = allStudents
-            .Where(u => !string.IsNullOrWhiteSpace(u.Group) &&
-                        string.Equals(u.Group!.Trim(), normGroup, StringComparison.OrdinalIgnoreCase))
-            .ToList();
+    // 2) Supprimer la/les règles d’accès du groupe (case-insensitive)
+    var rules = await db.Set<GroupAccessRule>()
+        .Where(r => r.GroupName.ToLower() == normGroup.ToLower())
+        .ToListAsync();
 
-        if (toDelete.Count == 0)
-            return Results.NotFound(new { Error = $"No students found in group '{normGroup}'." });
+    if (rules.Count > 0)
+    {
+        db.RemoveRange(rules);
+        await db.SaveChangesAsync();
+    }
 
-        var errors = new List<string>();
+    await tx.CommitAsync();
 
-        foreach (var user in toDelete)
-        {
-            var result = await userManager.DeleteAsync(user);
-            if (!result.Succeeded)
-                errors.Add($"{user.Id}: {string.Join("; ", result.Errors.Select(e => $"{e.Code} {e.Description}"))}");
-        }
-
-        // (Optionnel) Si tu veux aussi supprimer la règle d'accès du groupe, voir l'exemple plus bas.
-
-        if (errors.Count > 0)
-            return Results.Problem(
-                detail: "Some deletions failed: " + string.Join(" | ", errors),
-                statusCode: StatusCodes.Status409Conflict);
-
-        return Results.NoContent();
-    })
-    .RequireAuthorization(/* ex: roles: "Admin,Professor" */);
+    // Retour clair selon ce qui a été supprimé
+    return Results.Ok(new
+    {
+        Group = normGroup,
+        StudentsDeleted = toDelete.Count,
+        RulesDeleted = rules.Count
+    });
+})
+.RequireAuthorization(/* ex: roles: "Admin,Professor" */);
 
 
 // DELETE /auth/students  → supprime définitivement tous les étudiants

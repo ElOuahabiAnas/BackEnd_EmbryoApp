@@ -151,6 +151,27 @@ public sealed class NotificationController : ControllerBase
     }
     
     
+    // POST /api/notifications/group/{group}  → envoie une notif à tous les étudiants du groupe
+    [HttpPost("group/{group}")]
+    [Authorize(Roles = "Professor,Admin")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> CreateForGroup(string group, [FromBody] CreateNotificationRequest req, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(group))
+            return BadRequest(new { error = "group_required" });
+
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+        var created = await _svc.CreateForGroupAsync(group, req, ct);
+        if (created == 0)
+            return NotFound(new { error = "no_students_in_group", group });
+
+        return Ok(new { group, created, message = "notifications_created_for_group" });
+    }
+
+    
 
 
 }

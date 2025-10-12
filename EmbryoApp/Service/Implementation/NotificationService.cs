@@ -177,5 +177,52 @@ public sealed class NotificationService : INotificationService
 
         return created; // = nombre de lignes insérées
     }
+    
+    public async Task<int> CreateForGroupAsync(string groupName, CreateNotificationRequest req, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(groupName))
+            return 0;
+
+        // Rôle STUDENT
+        var studentRoleId = await _db.Roles
+            .Where(r => r.NormalizedName == "STUDENT")
+            .Select(r => r.Id)
+            .FirstOrDefaultAsync(ct);
+        if (string.IsNullOrEmpty(studentRoleId))
+            return 0;
+
+        var norm = groupName.Trim().ToLower();
+
+        // Tous les étudiants du groupe (case-insensitive)
+        var studentIds = await (
+            from u in _db.Users
+            join ur in _db.UserRoles on u.Id equals ur.UserId
+            where ur.RoleId == studentRoleId
+                  && u.Group != null
+                  && u.Group.ToLower() == norm
+            select u.Id
+        ).ToListAsync(ct);
+
+        if (studentIds.Count == 0) return 0;
+
+        var now   = DateTimeOffset.UtcNow;
+        var title = (req.Title ?? string.Empty).Trim();
+        var body  = (req.Body  ?? string.Empty).Trim();
+
+        var notifications = studentIds.Select(uid => new Notification
+        {
+            NotificationId = Guid.NewGuid(),
+            Title  = title,
+            Body   = body,
+            SentAt = now,
+            IsRead = false,
+            UserId = uid                // ← affectée à CHAQUE étudiant
+        }).ToList();
+
+        await _db.Set<Notification>().AddRangeAsync(notifications, ct);
+        var created = await _db.SaveChangesAsync(ct);
+        return created;
+    }
+
 
 }
