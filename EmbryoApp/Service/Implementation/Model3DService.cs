@@ -63,13 +63,16 @@ public sealed class Model3DService : IModel3DService
 
         var total = await query.CountAsync(ct);
         var skip  = Math.Max(0, (q.Page - 1) * Math.Max(1, q.PageSize));
+
         var items = await query
-            .OrderByDescending(m => m.PublishedAt)
-            .ThenByDescending(m => m.ModelId)
+            .OrderBy(m => m.EmbryoDay ?? int.MaxValue) // tri par EmbryoDay asc, nulls en dernier
+            .ThenBy(m => m.Title)                       // tie-breaker stable
+            .ThenBy(m => m.ModelId)                     // tie-breaker supplémentaire
             .Skip(skip)
             .Take(Math.Max(1, q.PageSize))
             .Select(m => ToResponse(m))
             .ToListAsync(ct);
+
 
         return new PagedResult<Model3DResponse> { Total = total, Items = items };
     }
